@@ -1,31 +1,38 @@
 # MaxDoot — Architecture & Framework
 
-> **MaxDoot** is a Salesforce-embedded edition of *heydoot*. It brings WhatsApp
-> conversations directly into the Salesforce UI **without** using Salesforce
-> Messaging for WhatsApp (Digital Engagement), thereby avoiding its
-> per-conversation / per-agent licensing. It supports both the **official
-> WhatsApp Business Cloud API** and an **unofficial WhatsApp-Web bridge** for
-> orgs that don't (yet) have the official API.
+> **MaxDoot** is a Salesforce-embedded edition of *heydoot*. It surfaces WhatsApp
+> conversations inside the Salesforce UI **without** Salesforce Messaging for
+> WhatsApp (Digital Engagement), avoiding its per-conversation / per-agent
+> licensing. The WhatsApp engine is **heydoot itself** — MaxDoot drives it over
+> heydoot's API for send/receive and renders heydoot's **QR login inside the
+> Salesforce window**.
+
+> **Decisions locked in (2026-06-03)**
+> - **Engine:** reuse the existing **heydoot** engine via its API (send + receive).
+>   No new WhatsApp stack is built. QR scanning is surfaced inside Salesforce.
+> - **Distribution:** **single-org tool**, deployed per customer by us. No
+>   AppExchange, no managed package, no namespace. → SFDX source / unmanaged deploy.
+> - **Hosting:** heydoot keeps running **where it already runs**. MaxDoot adds no
+>   new always-on service of its own (see §2 note).
+> - **Number routing:** **per-team / per-agent, configurable**, and can fall back
+>   to a single org-wide number. → a configurable Channel object (§5).
 
 ---
 
 ## 1. Why not Digital Engagement?
 
-Salesforce's native WhatsApp channel is part of the **Digital Engagement**
-add-on, billed per conversation and per messaging user. MaxDoot reproduces the
-agent experience using only features bundled with most Salesforce editions:
+Salesforce's native WhatsApp is the **Digital Engagement** add-on, billed per
+conversation and per messaging user. MaxDoot reproduces the agent experience
+using only features bundled with most Salesforce editions, and points them at
+heydoot:
 
-| Capability            | Native (Digital Engagement) | MaxDoot                                  |
-| --------------------- | --------------------------- | ---------------------------------------- |
-| WhatsApp channel      | Licensed add-on             | External **MaxDoot Gateway**             |
-| Agent inbox UI        | Service Console / Omni      | Custom **LWC** tab (SLDS, native look)   |
-| Data storage          | MessagingSession objects    | Custom objects (`Conversation__c`, etc.) |
-| Real-time to agent    | Omni-Channel                | **Platform Events + empApi**             |
-| Billing               | Per conversation/user       | Only Meta/BSP message fees               |
-
-The trade-off: MaxDoot is responsible for the channel plumbing, compliance
-windows, and (in unofficial mode) the ToS risk that Salesforce would otherwise
-shoulder. See §8.
+| Capability        | Native (Digital Engagement) | MaxDoot                                    |
+| ----------------- | --------------------------- | ------------------------------------------ |
+| WhatsApp channel  | Licensed add-on             | **heydoot** (existing engine, via its API) |
+| Agent inbox UI    | Service Console / Omni      | Custom **LWC** tab (SLDS, native look)     |
+| Data storage      | MessagingSession objects    | Custom objects (`Conversation__c`, etc.)   |
+| Real-time to agent| Omni-Channel                | **Platform Events + empApi**               |
+| Billing           | Per conversation/user       | Only heydoot's existing WhatsApp costs     |
 
 ---
 
@@ -37,118 +44,102 @@ flowchart LR
         CU["Customer's phone"]
     end
 
-    subgraph GW["MaxDoot Gateway  (external — Node.js/TS)"]
-        direction TB
-        ADAPT["Provider Adapter Layer\n(pluggable)"]
-        CLOUD["Cloud API adapter\n(Meta official)"]
-        WEB["WA-Web bridge adapter\n(QR / unofficial)"]
-        CORE["Core: routing, media,\nsession & window tracking"]
-        SFC["Salesforce Connector\n(Platform Events + REST)"]
-        ADAPT --> CLOUD
-        ADAPT --> WEB
-        CLOUD --> CORE
-        WEB --> CORE
-        CORE --> SFC
+    subgraph HD["heydoot Engine  (existing — runs where it already runs)"]
+        ENG["WhatsApp engine\n(with / without Business API)"]
+        API["heydoot API\nsend · QR · session status"]
+        HOOK["Inbound webhook emitter"]
+        ENG --> API
+        ENG --> HOOK
     end
 
-    subgraph SF["Salesforce Org"]
+    subgraph SF["Salesforce Org  (MaxDoot)"]
         direction TB
+        REST["Apex REST endpoint\n/services/apexrest/maxdoot/inbound"]
         PE["Platform Event\nMaxDoot_Inbound__e"]
         APEX["Apex services\n(controllers + callouts)"]
-        OBJ["Custom objects\nConversation__c / Message__c"]
-        LWC["LWC Inbox + Dashboard\n(SLDS, app tab)"]
-        PE --> APEX --> OBJ
+        OBJ["Custom objects\nConversation__c · Message__c · Channel__c"]
+        LWC["LWC: Inbox · Conversation · Dashboard · QR-login\n(SLDS, app tab)"]
+        REST --> PE --> APEX --> OBJ
         OBJ <--> LWC
         LWC -- "empApi subscribe" --> PE
-        LWC -- "send" --> APEX
+        LWC -- "send / fetch QR" --> APEX
     end
 
-    CU <-->|"messages + media"| ADAPT
-    SFC -->|"publish inbound\n(Composite REST)"| PE
-    APEX -->|"outbound via Named Credential"| CORE
+    CU <-->|"messages + media"| ENG
+    HOOK -->|"inbound webhook (HTTPS + token)"| REST
+    APEX -->|"outbound + QR fetch via Named Credential"| API
 ```
 
-**Two halves, one contract.** Everything WhatsApp-specific and long-running
-lives in the **Gateway**. Everything agent-facing lives in **Salesforce**. They
-communicate over a small, versioned HTTP + event contract (§6) so either side
-can evolve independently.
+**Note on "hosting" (answering your question):** MaxDoot's *UI and logic are
+embedded in Salesforce* — correct. But the **WhatsApp engine cannot live inside
+Salesforce**: Apex can't hold a persistent WhatsApp session or scan a QR. That
+engine is **heydoot**, and it already runs somewhere today. So there's **no new
+gateway to host** — MaxDoot just needs heydoot's API URL + credentials
+(stored in a Salesforce **Named Credential**) and a webhook pointing back at a
+Salesforce Apex REST endpoint. The only "hosting" question left is whether
+heydoot's current deployment can (a) reach Salesforce for webhooks and (b)
+expose the QR + session-status endpoints — see §8.
 
 ---
 
 ## 3. Component breakdown
 
-### 3.1 Salesforce org (the "native" experience)
-- **Lightning App + Tab** — `MaxDoot` app with a single home tab; styled with
-  **SLDS** so it's indistinguishable from standard Salesforce.
+### 3.1 Salesforce org — MaxDoot (everything we build)
+- **Lightning App + Tab** `MaxDoot`, styled with **SLDS** for a native look.
 - **LWC components**
-  - `maxdootInbox` — left rail: list of open conversations (unread badges,
-    last-message preview, SLA timer for the 24h window).
-  - `maxdootConversation` — message thread (to-and-fro bubbles), composer,
-    template picker, media attach.
-  - `maxdootDashboard` — KPIs: open conversations, unassigned, response time,
-    volume by day.
+  - `maxdootInbox` — open conversations list (unread badges, last-message
+    preview, window/SLA timer), filterable by Channel / team / agent.
+  - `maxdootConversation` — to-and-fro thread, composer, media attach,
+    template/quick-reply picker.
+  - `maxdootDashboard` — KPIs: open, unassigned, avg response time, volume.
+  - `maxdootChannelSetup` — **renders heydoot's QR code inside Salesforce** and
+    shows live session status (connected / disconnected / needs re-scan).
 - **Apex**
-  - `MaxDootInboundHandler` — subscribes nothing; instead a trigger on the
-    Platform Event upserts `Conversation__c` / `Message__c` and links to
-    Contact/Lead by phone.
-  - `MaxDootSendController` — `@AuraEnabled` send method → callout to Gateway
-    via **Named Credential** (stores the Gateway URL + auth, no secrets in code).
-  - `MaxDootMatchService` — phone-number → Contact/Lead/Account resolution.
-- **Custom objects** (§5).
-- **Platform Event** `MaxDoot_Inbound__e` — high-volume event the Gateway
-  publishes into; LWC subscribes via **`lightning/empApi`** for live updates.
-- **Permission set** `MaxDoot_Agent` — gates object + Apex + tab access.
+  - `MaxDootInboundResource` — `@RestResource` endpoint heydoot's webhook POSTs
+    to; verifies a shared token, publishes `MaxDoot_Inbound__e`.
+  - `MaxDootInboundTrigger` — on the Platform Event: upserts
+    `Conversation__c`/`Message__c`, resolves Contact/Lead by phone, applies
+    routing to a Channel/owner.
+  - `MaxDootSendController` — `@AuraEnabled`; outbound callout to heydoot API
+    via **Named Credential**.
+  - `MaxDootChannelController` — `@AuraEnabled`; fetches QR + session status
+    from heydoot for `maxdootChannelSetup`.
+  - `MaxDootRouting` — phone→Contact/Lead match + Channel/agent assignment.
+- **Custom objects** (§5) and **Platform Event** `MaxDoot_Inbound__e`.
+- **Permission set** `MaxDoot_Agent` (+ `MaxDoot_Admin` for channel setup).
+- **Named Credential** `heydoot` — base URL + auth to heydoot's API; no secrets
+  in Apex.
 
-### 3.2 MaxDoot Gateway (external service)
-Runs outside Salesforce because it needs (a) a public webhook endpoint, (b) a
-persistent process for the WA-Web socket, and (c) media handling — none of
-which Apex can do.
+### 3.2 heydoot Engine (existing — not built here)
+Treated as a black box exposing an API. MaxDoot depends on it for:
+- **Send** — text / media / (template, if supported).
+- **Inbound** — webhook POST to MaxDoot's Apex REST endpoint per message + delivery/read status.
+- **QR + session** — endpoint(s) returning the login QR (image or string) and
+  current session status, addressable **per channel/number** (for multi-number).
 
-- **Provider Adapter Layer** — a single `WhatsAppProvider` interface with two
-  implementations:
-  - `CloudApiProvider` — Meta Graph API; receives webhooks, sends messages &
-    templates, handles media via Meta's media endpoints.
-  - `WebBridgeProvider` — QR-login session (e.g. Baileys/whatsapp-web.js);
-    emits the same normalized events. **Unofficial — see §8.**
-- **Core** — normalizes inbound/outbound to a canonical `MaxDootMessage`,
-  tracks the **24-hour service window** per contact, manages media
-  upload/download, dedupes, retries.
-- **Salesforce Connector** — publishes inbound via **Composite REST** to the
-  Platform Event; exposes `/v1/messages` for outbound from Apex; uses a
-  **Connected App + JWT bearer flow** (server-to-server, no interactive login).
-- **Datastore** — Postgres for message log/idempotency + Redis for session
-  state and rate-limiting. (Salesforce remains the system of record for the
-  agent; the Gateway keeps an operational log.)
+> If heydoot can't POST webhooks directly to Salesforce (auth/format), a **thin
+> stateless connector** can be added later to translate + authenticate. We
+> design the contract so this is optional — see §8.
 
 ---
 
-## 4. Provider strategy (with / without Business API)
+## 4. heydoot connection model (was "provider strategy")
 
-```mermaid
-flowchart TB
-    SET["Org config:\nmaxdoot.provider"] -->|cloud| C["CloudApiProvider"]
-    SET -->|web| W["WebBridgeProvider"]
-    C --> IFACE["WhatsAppProvider interface"]
-    W --> IFACE
-    IFACE --> N["Normalized MaxDootMessage\n→ rest of system is provider-agnostic"]
+Because heydoot already abstracts *with/without Business API* internally,
+MaxDoot doesn't implement WhatsApp providers at all. It only needs a stable
+**API contract** with heydoot:
+
+```
+Outbound (Apex → heydoot):   POST {heydootBaseUrl}/v1/channels/{channelId}/messages
+Inbound  (heydoot → Apex):   POST /services/apexrest/maxdoot/inbound      (token-auth)
+QR / session (Apex → heydoot): GET {heydootBaseUrl}/v1/channels/{channelId}/qr
+                                GET {heydootBaseUrl}/v1/channels/{channelId}/status
 ```
 
-The interface keeps a hard line so the rest of MaxDoot never knows which
-provider is active:
+`channelId` is what makes **per-team / per-agent / org-wide** routing work: each
+Salesforce `Channel__c` record maps to one heydoot channel/number.
 
-```ts
-interface WhatsAppProvider {
-  sendText(to: string, body: string): Promise<ProviderMessageId>;
-  sendTemplate(to: string, tpl: TemplateRef, vars: string[]): Promise<ProviderMessageId>;
-  sendMedia(to: string, media: MediaRef, caption?: string): Promise<ProviderMessageId>;
-  onInbound(handler: (m: NormalizedInbound) => void): void;   // webhook OR socket
-  onStatus(handler: (s: DeliveryStatus) => void): void;       // sent/delivered/read
-}
-```
-
-This means: ship with the **Web bridge** for instant value (just scan a QR),
-and let customers **upgrade to the Cloud API** later by flipping config — no
-change to the Salesforce side.
+> Exact paths/payloads will be pinned to heydoot's real API once confirmed (§8).
 
 ---
 
@@ -156,15 +147,27 @@ change to the Salesforce side.
 
 ```mermaid
 erDiagram
+    Channel__c ||--o{ Conversation__c : "routes"
     Contact ||--o{ Conversation__c : "has"
     Lead    ||--o{ Conversation__c : "has"
     Conversation__c ||--o{ Message__c : "contains"
 
+    Channel__c {
+        string  Name "e.g. Sales Team / Agent Asha"
+        string  Heydoot_Channel_Id__c
+        phone   WhatsApp_Number__c
+        picklist Scope__c "Org|Team|Agent"
+        lookup  Assigned_Group__c "(public group/queue)"
+        lookup  Assigned_Agent__c "(User)"
+        picklist Session_Status__c "Connected|Disconnected|NeedsScan"
+        boolean Active__c
+    }
     Conversation__c {
         string  Name
+        lookup  Channel__c
         lookup  Contact__c
         lookup  Lead__c
-        phone   WhatsApp_Number__c
+        phone   Customer_Number__c
         picklist Status__c "Open|Pending|Closed"
         lookup  Owner_Agent__c
         datetime Last_Inbound__c
@@ -176,91 +179,92 @@ erDiagram
         picklist Direction__c "Inbound|Outbound"
         textarea Body__c
         url      Media_URL__c
-        string   Provider_Message_Id__c
+        string   Heydoot_Message_Id__c
         picklist Status__c "Queued|Sent|Delivered|Read|Failed"
         datetime Timestamp__c
     }
 ```
 
-- `Provider_Message_Id__c` is the **idempotency key** — protects against
-  duplicate Platform Event delivery.
-- `Window_Expires__c` drives the UI's "session window closing" warning and
-  forces template-only sends after 24h (Cloud API rule).
+- **`Channel__c` is the configurable routing unit** you asked for: `Scope__c`
+  switches between one org-wide number, per-team, or per-agent. Inbound is
+  routed to the owning group/agent based on the channel the message arrived on.
+- `Heydoot_Message_Id__c` is the **idempotency key** (webhooks may retry).
+- `Window_Expires__c` drives the 24h-window UI if/when the Business-API path is used.
 
 ---
 
 ## 6. Key flows
 
+**Channel onboarding (QR inside Salesforce)**
+1. Admin opens `maxdootChannelSetup` for a `Channel__c`.
+2. LWC → `MaxDootChannelController` → heydoot `GET /qr` → renders QR in Salesforce.
+3. Admin scans with the WhatsApp phone; LWC polls `GET /status` until `Connected`.
+4. `Channel__c.Session_Status__c` updates; channel is now live.
+
 **Inbound (customer → agent)**
-1. WhatsApp delivers to Gateway (webhook for Cloud API; socket event for Web).
-2. Adapter normalizes → Core resolves/creates session, stores media in object store.
-3. Connector publishes `MaxDoot_Inbound__e` via Composite REST (JWT auth).
-4. Platform Event trigger upserts `Conversation__c`/`Message__c`, matches Contact.
-5. LWC `empApi` subscription receives the event → thread updates live.
+1. Customer messages the number → heydoot engine receives it.
+2. heydoot webhook → `POST /services/apexrest/maxdoot/inbound` (shared-token auth).
+3. `MaxDootInboundResource` publishes `MaxDoot_Inbound__e`.
+4. PE trigger upserts `Conversation__c`/`Message__c`, matches Contact/Lead,
+   routes by `Channel__c`.
+5. LWC `empApi` subscription updates the thread live.
 
 **Outbound (agent → customer)**
-1. Agent types/sends in `maxdootConversation`.
-2. `MaxDootSendController.send()` → callout via Named Credential → Gateway `/v1/messages`.
-3. Active adapter sends; returns `ProviderMessageId`; Apex writes `Message__c` (Queued).
-4. Delivery/read receipts come back as inbound status events → `Message__c.Status__c` updates.
-
-**Template / outside-window send**
-- If `Window_Expires__c` has passed, composer disables free-text and shows the
-  approved **template picker** (Cloud API). Web-bridge mode has no template
-  concept, so it allows free text but surfaces the ToS warning.
+1. Agent sends in `maxdootConversation`.
+2. `MaxDootSendController` → callout (Named Credential) → heydoot `POST .../messages`.
+3. heydoot returns its message id → Apex writes `Message__c` (Queued).
+4. Delivery/read receipts arrive via the same inbound webhook → status updates.
 
 ---
 
-## 7. Recommended tech stack
+## 7. Tech stack
 
-| Layer            | Choice                                       | Why                                              |
-| ---------------- | -------------------------------------------- | ------------------------------------------------ |
-| Salesforce UI    | **LWC + SLDS**, SFDX source format           | Native look, modern, packageable                 |
-| SF server        | **Apex** (controllers + Platform Event trigger) | Only option in-org                            |
-| Real-time to UI  | **Platform Events + `lightning/empApi`**     | No Omni/Digital Engagement needed                |
-| Gateway          | **Node.js + TypeScript** (Fastify)           | WA libs are JS-native; async I/O                 |
-| Cloud API        | Meta Graph API                               | Official path                                    |
-| Web bridge       | Baileys (or whatsapp-web.js)                 | No API onboarding; QR login                      |
-| Gateway store    | **Postgres + Redis**                         | Log/idempotency + session/rate state             |
-| SF ↔ Gateway     | Named Credential (out), Connected App + JWT (in) | Secretless callouts, server-to-server auth   |
-| Hosting          | Heroku / AWS ECS / Fly.io                    | Persistent process + public endpoint             |
-| Packaging        | **2GP managed package** (later)              | Distribution to other orgs / AppExchange path    |
+| Layer            | Choice                                            | Why                                         |
+| ---------------- | ------------------------------------------------- | ------------------------------------------- |
+| Salesforce UI    | **LWC + SLDS**, SFDX source format                | Native look; deployable per-org             |
+| SF server        | **Apex** (REST resource, PE trigger, controllers) | Only in-org option                          |
+| Real-time to UI  | **Platform Events + `lightning/empApi`**          | No Omni/Digital Engagement needed           |
+| SF → heydoot     | **Named Credential** callouts                     | Secretless; QR fetch + send                 |
+| heydoot → SF     | **Apex `@RestResource`** webhook + shared token   | No middleware needed (if heydoot can reach it) |
+| Distribution     | **SFDX unmanaged source deploy** (per customer)   | Single-org; no namespace / no security review |
+
+No new always-on service is introduced by MaxDoot; heydoot is the only
+long-running component and it already exists.
 
 ---
 
-## 8. Advice, risks & decisions to make
+## 8. Advice, risks & what I still need from heydoot
 
-**Strong recommendations**
-- **Build provider-agnostic from day one.** The adapter interface (§4) is the
-  single most important design decision — it lets you ship the Web bridge fast
-  and migrate customers to the Cloud API with zero Salesforce changes.
-- **Salesforce is the system of record** for agents; the Gateway keeps only an
-  operational log. Don't split the source of truth.
-- **Idempotency everywhere** — Platform Events are *at-least-once*; key on
-  `Provider_Message_Id__c`.
-- **Secretless on the SF side** — Named Credentials + JWT. No tokens in Apex.
+**To finalize the design I need 4 facts about heydoot's API:**
+1. **Send API** — is there a REST endpoint to send text/media (and templates)?
+   What's its auth (API key / bearer / OAuth) and payload shape?
+2. **Inbound delivery** — does heydoot push **webhooks** to a configurable URL?
+   Can that URL be a Salesforce Apex REST endpoint with a static token/header,
+   or does it require an OAuth handshake? (This decides whether we need the thin
+   connector in §3.2.)
+3. **QR + session** — does heydoot expose the login **QR (image/string)** and a
+   **session-status** endpoint via API, so we can render/poll it in an LWC?
+4. **Multi-number** — does heydoot support multiple numbers/sessions per
+   account, each addressable by an id (our `channelId`)?
 
-**Risks to flag now**
-- ⚠️ **Unofficial Web bridge violates WhatsApp's ToS** and risks number bans.
-  Position it as a trial/SMB on-ramp; make the Cloud API the recommended
-  production path. Isolate the bridge so a ban can't take down the org.
-- ⚠️ **24-hour window + template approval** (Cloud API) — must be modeled in UI
-  or agents will hit silent send failures.
-- ⚠️ **Salesforce governor limits** — Platform Event publish caps, Apex callout
-  limits (max 100/transaction, 120s), and **data storage** for high message
-  volume. Consider archiving old `Message__c` to the Gateway/BigObjects.
-- ⚠️ **PII & compliance** — WhatsApp content is personal data; encrypt at rest
-  in the Gateway, define retention, and respect Shield/field-level security in SF.
+**Advice**
+- **Keep Salesforce as the system of record** for agents; heydoot stays the
+  channel engine + operational log.
+- **Idempotency on `Heydoot_Message_Id__c`** — webhooks retry.
+- **Secretless Apex** — heydoot credentials live in a Named Credential; the
+  inbound webhook is guarded by a rotating shared token (and IP allow-list if
+  heydoot has a static egress IP).
+- **QR session lifecycle** — surface disconnect/expiry clearly in
+  `maxdootChannelSetup`; sessions drop and need re-scan.
 
-**Decisions I'd like your call on**
-1. **Launch provider** — Web bridge first (fast, risky) vs Cloud API first
-   (slower onboarding, production-grade)? Recommendation: build both, **default
-   to Web bridge for the demo**, Cloud API for GA.
-2. **Distribution** — single-org internal tool, or **2GP managed package** for
-   resale on AppExchange? This affects naming, namespaces, and security review.
-3. **Gateway host** — Heroku (fastest), AWS, or your existing infra?
-4. **Multi-number / routing** — one WhatsApp number for the whole org, or per
-   team/agent? Affects the data model and session ownership.
+**Risks**
+- ⚠️ If heydoot uses the **unofficial WhatsApp-Web** path, number-ban risk
+  remains; isolate channels so one ban doesn't block others.
+- ⚠️ **Salesforce governor limits** — Platform Event caps, Apex callout limits
+  (100/txn, 120s), and **data storage** at volume (plan archiving of old
+  `Message__c`).
+- ⚠️ **PII/retention** — WhatsApp content is personal data; define retention and
+  respect field-level security; consider Shield if the customer requires it.
 
 ---
 
@@ -270,36 +274,39 @@ erDiagram
 MaxDoot/
 ├── docs/
 │   └── ARCHITECTURE.md          ← this file
-├── salesforce/                  ← SFDX project
-│   ├── sfdx-project.json
-│   └── force-app/main/default/
-│       ├── lwc/                 (maxdootInbox, maxdootConversation, maxdootDashboard)
-│       ├── classes/             (Apex controllers, services, PE trigger handler)
-│       ├── objects/             (Conversation__c, Message__c)
-│       ├── platformEvents/      (MaxDoot_Inbound__e)
-│       ├── permissionsets/      (MaxDoot_Agent)
-│       └── applications/        (MaxDoot app + tab)
-└── gateway/                     ← Node.js/TS service
-    ├── src/
-    │   ├── providers/           (cloud-api/, web-bridge/, provider.interface.ts)
-    │   ├── core/                (router, window-tracker, media, idempotency)
-    │   ├── salesforce/          (connector: PE publish + JWT auth)
-    │   └── api/                 (Fastify routes: /v1/messages, /webhook)
-    ├── package.json
-    └── Dockerfile
+└── salesforce/                  ← SFDX project (the whole product)
+    ├── sfdx-project.json
+    └── force-app/main/default/
+        ├── lwc/                 (maxdootInbox, maxdootConversation,
+        │                         maxdootDashboard, maxdootChannelSetup)
+        ├── classes/             (MaxDootInboundResource, MaxDootInboundTrigger,
+        │                         MaxDootSendController, MaxDootChannelController,
+        │                         MaxDootRouting + tests)
+        ├── objects/             (Channel__c, Conversation__c, Message__c)
+        ├── platformEvents/      (MaxDoot_Inbound__e)
+        ├── namedCredentials/    (heydoot)
+        ├── permissionsets/      (MaxDoot_Agent, MaxDoot_Admin)
+        └── applications/        (MaxDoot app + tab)
+
+# Optional, only if heydoot can't webhook Salesforce directly:
+# └── connector/   (thin stateless relay: heydoot webhook → Salesforce PE)
 ```
+
+No `gateway/` directory — heydoot is the engine and already exists.
 
 ---
 
 ## 10. Suggested phasing
 
-1. **Phase 0 — Skeleton & contract.** Repo layout, define the SF↔Gateway
-   contract (event schema + `/v1/messages`), stub provider interface.
-2. **Phase 1 — Inbound MVP.** Web-bridge inbound → Platform Event → `Message__c`
-   → live in a basic LWC thread. Proves the hardest plumbing first.
-3. **Phase 2 — Outbound + matching.** Send from LWC, Contact/Lead resolution,
-   delivery receipts.
-4. **Phase 3 — Dashboard + window/SLA.** KPIs, 24h timer, unread counts.
-5. **Phase 4 — Cloud API provider + templates.** Flip-the-switch upgrade path.
-6. **Phase 5 — Packaging & hardening.** 2GP package, permission sets, security
-   review prep, archiving strategy.
+1. **Phase 0 — Skeleton & contract.** SFDX project, custom objects, Platform
+   Event, Named Credential, and the **heydoot API contract** pinned to its real
+   endpoints.
+2. **Phase 1 — QR onboarding.** `maxdootChannelSetup` renders heydoot's QR in
+   Salesforce + live session status. Proves the heydoot↔Salesforce link.
+3. **Phase 2 — Inbound.** Webhook → Apex REST → Platform Event → `Message__c` →
+   live LWC thread. Contact/Lead matching + Channel routing.
+4. **Phase 3 — Outbound + receipts.** Send from LWC; delivery/read status.
+5. **Phase 4 — Dashboard + routing config.** KPIs, per-team/per-agent/org-wide
+   `Channel__c` setup, window/SLA timers.
+6. **Phase 5 — Hardening & per-customer deploy.** Permission sets, token
+   rotation, archiving, repeatable SFDX deploy script per customer org.
