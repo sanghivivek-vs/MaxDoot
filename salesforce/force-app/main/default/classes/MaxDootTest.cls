@@ -31,7 +31,7 @@ private class MaxDootTest {
 
     @isTest
     static void inboundWebhook_createsConversationAndMessage() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         makeChannel();
 
         RestRequest req = new RestRequest();
@@ -62,7 +62,7 @@ private class MaxDootTest {
 
     @isTest
     static void inboundWebhook_rejectsBadToken() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         RestRequest req = new RestRequest();
         req.httpMethod = 'POST';
         req.headers.put('X-MaxDoot-Token', 'wrong');
@@ -76,7 +76,7 @@ private class MaxDootTest {
 
     @isTest
     static void inboundHandler_isIdempotent() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         makeChannel();
         MaxDoot_Inbound__e e = new MaxDoot_Inbound__e(
             Event_Type__c = 'message', Channel_Id__c = 'chan-1',
@@ -90,7 +90,7 @@ private class MaxDootTest {
 
     @isTest
     static void inboundHandler_matchesChannelByNumber() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         makeChannel(); // WhatsApp_Number__c = +10000000000
         MaxDoot_Inbound__e e = new MaxDoot_Inbound__e(
             Event_Type__c = 'message', Channel_Id__c = null,
@@ -106,7 +106,7 @@ private class MaxDootTest {
 
     @isTest
     static void statusEvent_updatesMessage() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Conversation__c conv = new Conversation__c(
             External_Key__c = 'chan-1:+1444', Customer_Number__c = '+1444',
@@ -125,7 +125,7 @@ private class MaxDootTest {
 
     @isTest
     static void sendMessage_callsHeydootAndStoresMessage() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Conversation__c conv = new Conversation__c(
             External_Key__c = 'chan-1:+1777', Customer_Number__c = '+1777',
@@ -144,7 +144,7 @@ private class MaxDootTest {
 
     @isTest
     static void sendMessage_emptyThrows() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Conversation__c conv = new Conversation__c(
             External_Key__c = 'chan-1:+1888', Customer_Number__c = '+1888',
@@ -161,7 +161,7 @@ private class MaxDootTest {
 
     @isTest
     static void queries_work() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Conversation__c conv = new Conversation__c(
             External_Key__c = 'chan-1:+1999', Customer_Number__c = '+1999',
@@ -178,7 +178,7 @@ private class MaxDootTest {
 
     @isTest
     static void channelController_qrAndStatus() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Test.setMock(HttpCalloutMock.class, new MaxDootCalloutMock());
         Test.startTest();
@@ -192,7 +192,7 @@ private class MaxDootTest {
 
     @isTest
     static void dashboard_stats() {
-        MaxDootConfig.override = cfg();
+        MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Conversation__c conv = new Conversation__c(
             External_Key__c = 'chan-1:+1212', Customer_Number__c = '+1212',
@@ -216,7 +216,7 @@ private class MaxDootTest {
         c.Tagline__c = 'Care that connects';
         c.Support_Email__c = 'help@example.com';
         c.Support_Phone__c = 'REPLACE_WITH_MAX_HEALTH_SUPPORT_PHONE';
-        MaxDootConfig.override = c;
+        MaxDootConfig.testOverride = c;
 
         MaxDootBrandingController.Branding b = MaxDootBrandingController.getBranding();
         System.assertEquals('Max Health', b.companyName);

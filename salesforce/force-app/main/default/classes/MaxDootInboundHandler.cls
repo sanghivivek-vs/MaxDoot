@@ -177,8 +177,8 @@ public without sharing class MaxDootInboundHandler {
     }
 
     @TestVisible
-    private static String convKey(String channelId, String number) {
-        return (channelId == null ? '' : channelId) + ':' + (number == null ? '' : number);
+    private static String convKey(String channelId, String phone) {
+        return (channelId == null ? '' : channelId) + ':' + (phone == null ? '' : phone);
     }
 
     /** Stable per-event channel discriminator: heydoot channel id if present, else our number. */

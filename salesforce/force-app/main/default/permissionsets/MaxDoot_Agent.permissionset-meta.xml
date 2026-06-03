@@ -43,11 +43,6 @@
         <editable>false</editable>
     </fieldPermissions>
     <fieldPermissions>
-        <field>Channel__c.Scope__c</field>
-        <readable>true</readable>
-        <editable>false</editable>
-    </fieldPermissions>
-    <fieldPermissions>
         <field>Channel__c.Session_Status__c</field>
         <readable>true</readable>
         <editable>false</editable>
@@ -120,12 +115,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <field>Conversation__c.External_Key__c</field>
-        <readable>true</readable>
-        <editable>true</editable>
-    </fieldPermissions>
-
-    <fieldPermissions>
-        <field>Message__c.Direction__c</field>
         <readable>true</readable>
         <editable>true</editable>
     </fieldPermissions>

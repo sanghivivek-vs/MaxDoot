@@ -4,11 +4,11 @@
  * path templates, the outbound API key and the inbound shared token.
  */
 public with sharing class MaxDootConfig {
-    @TestVisible private static MaxDoot_Config__mdt override;
+    @TestVisible private static MaxDoot_Config__mdt testOverride;
 
     public static MaxDoot_Config__mdt get() {
-        if (override != null) {
-            return override;
+        if (testOverride != null) {
+            return testOverride;
         }
         MaxDoot_Config__mdt cfg = MaxDoot_Config__mdt.getInstance('Default');
         if (cfg == null) {
