@@ -57,6 +57,16 @@ export default class MaxdootChannelSetup extends LightningElement {
     get qrIsText() {
         return this.qrValue && !this.qrIsImage;
     }
+    get selectedIframeUrl() {
+        const c = this.selectedChannel;
+        return c ? c.Iframe_QR_URL__c : null;
+    }
+    get useIframe() {
+        return !!this.selectedIframeUrl;
+    }
+    get useApiQr() {
+        return !this.useIframe;
+    }
 
     handleSelect(event) {
         this.selectedId = event.currentTarget.dataset.id;

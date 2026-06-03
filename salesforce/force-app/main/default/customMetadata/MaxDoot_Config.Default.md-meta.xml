@@ -12,14 +12,14 @@
     </values>
     <values>
         <field>Send_Path__c</field>
-        <value xsi:type="xsd:string">/v1/channels/{channelId}/messages</value>
+        <value xsi:type="xsd:string">/v1/messages</value>
     </values>
     <values>
         <field>QR_Path__c</field>
-        <value xsi:type="xsd:string">/v1/channels/{channelId}/qr</value>
+        <value xsi:type="xsd:string">/v1/qr</value>
     </values>
     <values>
         <field>Status_Path__c</field>
-        <value xsi:type="xsd:string">/v1/channels/{channelId}/status</value>
+        <value xsi:type="xsd:string">/v1/status</value>
     </values>
 </CustomMetadata>

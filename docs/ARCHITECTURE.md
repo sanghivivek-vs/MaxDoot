@@ -123,23 +123,34 @@ Treated as a black box exposing an API. MaxDoot depends on it for:
 
 ---
 
-## 4. heydoot connection model (was "provider strategy")
+## 4. heydoot connection model (confirmed)
 
 Because heydoot already abstracts *with/without Business API* internally,
-MaxDoot doesn't implement WhatsApp providers at all. It only needs a stable
-**API contract** with heydoot:
+MaxDoot doesn't implement WhatsApp providers at all. It needs a stable
+**API contract** with heydoot. Confirmed facts:
+
+- **Send:** REST, **Bearer-token** auth + base URL. ✅
+- **Multi-number:** each number/session is addressed by its **own bearer token**
+  (not a URL path id). ✅ → the token lives **per `Channel__c` record**.
+- **Inbound:** heydoot can **webhook a Salesforce endpoint directly** (no relay
+  needed). ✅
+- **QR/session:** likely surfaced as an **embeddable page (iframe)**; a JSON QR
+  API is a fallback. ⏳ (confirming)
 
 ```
-Outbound (Apex → heydoot):   POST {heydootBaseUrl}/v1/channels/{channelId}/messages
-Inbound  (heydoot → Apex):   POST /services/apexrest/maxdoot/inbound      (token-auth)
-QR / session (Apex → heydoot): GET {heydootBaseUrl}/v1/channels/{channelId}/qr
-                                GET {heydootBaseUrl}/v1/channels/{channelId}/status
+Outbound (Apex → heydoot):   POST {base}/v1/messages        Authorization: Bearer <channel token>
+Inbound  (heydoot → Apex):   POST /services/apexrest/maxdoot/inbound   header X-MaxDoot-Token
+QR (preferred):              iframe of Channel__c.Iframe_QR_URL__c   (CSP Trusted Site)
+QR/status (fallback API):    GET {base}/v1/qr , GET {base}/v1/status   Bearer <channel token>
 ```
 
-`channelId` is what makes **per-team / per-agent / org-wide** routing work: each
-Salesforce `Channel__c` record maps to one heydoot channel/number.
+**The bearer token is the channel identity.** `Channel__c.Bearer_Token__c` ties a
+Salesforce routing unit (org/team/agent) to one heydoot number. Inbound messages
+are matched back to a channel by the destination WhatsApp number (or an optional
+`Heydoot_Channel_Id__c` if heydoot sends one).
 
-> Exact paths/payloads will be pinned to heydoot's real API once confirmed (§8).
+> Paths are configurable in `MaxDoot_Config__mdt`; pin them to heydoot's real
+> endpoints when confirmed.
 
 ---
 
@@ -235,17 +246,22 @@ long-running component and it already exists.
 
 ## 8. Advice, risks & what I still need from heydoot
 
-**To finalize the design I need 4 facts about heydoot's API:**
-1. **Send API** — is there a REST endpoint to send text/media (and templates)?
-   What's its auth (API key / bearer / OAuth) and payload shape?
-2. **Inbound delivery** — does heydoot push **webhooks** to a configurable URL?
-   Can that URL be a Salesforce Apex REST endpoint with a static token/header,
-   or does it require an OAuth handshake? (This decides whether we need the thin
-   connector in §3.2.)
-3. **QR + session** — does heydoot expose the login **QR (image/string)** and a
-   **session-status** endpoint via API, so we can render/poll it in an LWC?
-4. **Multi-number** — does heydoot support multiple numbers/sessions per
-   account, each addressable by an id (our `channelId`)?
+**heydoot API facts (answered):**
+1. **Send API** — ✅ REST, Bearer-token auth + URL.
+2. **Inbound delivery** — ✅ heydoot can webhook a Salesforce endpoint directly
+   (no relay connector needed). Endpoint exposure options below.
+3. **QR + session** — ⏳ likely an **embeddable page (iframe)**; JSON QR API is a
+   fallback. MaxDoot supports both (`Iframe_QR_URL__c` first, API QR otherwise).
+4. **Multi-number** — ✅ addressed by a **per-number bearer token**, stored on
+   `Channel__c.Bearer_Token__c`.
+
+**Exposing the inbound webhook (important):** Apex REST normally needs an
+authenticated session. Two ways to let heydoot POST in:
+- **Public Force.com Site** — grant the Site guest user access to
+  `MaxDootInboundResource`; heydoot POSTs to the site domain unauthenticated and
+  the `X-MaxDoot-Token` header is the security boundary. *(Simplest for heydoot.)*
+- **OAuth** — a Connected App; heydoot obtains a Salesforce token (JWT) and calls
+  the `*.my.salesforce.com` REST URL with both tokens.
 
 **Advice**
 - **Keep Salesforce as the system of record** for agents; heydoot stays the

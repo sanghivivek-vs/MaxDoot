@@ -61,27 +61,35 @@ public without sharing class MaxDootInboundHandler {
             existingIds.add(m.Heydoot_Message_Id__c);
         }
 
+        // 2. Load all channels so we can match by heydoot channel id OR by our WhatsApp number
+        //    (the bearer-token model means inbound may not carry a path channel id).
+        Map<String, Channel__c> channelByHeydootId = new Map<String, Channel__c>();
+        Map<String, Channel__c> channelByNumber = new Map<String, Channel__c>();
+        for (Channel__c c : [
+            SELECT Id, Heydoot_Channel_Id__c, WhatsApp_Number__c, Scope__c, Assigned_Agent__c
+            FROM Channel__c LIMIT 1000
+        ]) {
+            if (String.isNotBlank(c.Heydoot_Channel_Id__c)) {
+                channelByHeydootId.put(c.Heydoot_Channel_Id__c, c);
+            }
+            if (String.isNotBlank(c.WhatsApp_Number__c)) {
+                channelByNumber.put(digits(c.WhatsApp_Number__c), c);
+            }
+        }
+
         List<MaxDoot_Inbound__e> fresh = new List<MaxDoot_Inbound__e>();
-        Set<String> channelIds = new Set<String>();
         Set<String> numbers = new Set<String>();
         Set<String> convKeys = new Set<String>();
+        Map<MaxDoot_Inbound__e, Channel__c> channelForEvent = new Map<MaxDoot_Inbound__e, Channel__c>();
         for (MaxDoot_Inbound__e e : events) {
             if (String.isNotBlank(e.Message_Id__c) && existingIds.contains(e.Message_Id__c)) continue;
             fresh.add(e);
-            channelIds.add(e.Channel_Id__c);
             numbers.add(e.From_Number__c);
-            convKeys.add(convKey(e.Channel_Id__c, e.From_Number__c));
+            Channel__c ch = resolveChannel(e, channelByHeydootId, channelByNumber);
+            channelForEvent.put(e, ch);
+            convKeys.add(convKey(channelKeyOf(e), e.From_Number__c));
         }
         if (fresh.isEmpty()) return;
-
-        // 2. Load channels and existing conversations.
-        Map<String, Channel__c> channelByHeydootId = new Map<String, Channel__c>();
-        for (Channel__c c : [
-            SELECT Id, Heydoot_Channel_Id__c, Scope__c, Assigned_Agent__c
-            FROM Channel__c WHERE Heydoot_Channel_Id__c IN :channelIds
-        ]) {
-            channelByHeydootId.put(c.Heydoot_Channel_Id__c, c);
-        }
 
         Map<String, Conversation__c> convByKey = new Map<String, Conversation__c>();
         for (Conversation__c cv : [
@@ -97,13 +105,13 @@ public without sharing class MaxDootInboundHandler {
         // 4. Build/refresh conversations.
         Map<String, MaxDoot_Inbound__e> latestByKey = new Map<String, MaxDoot_Inbound__e>();
         for (MaxDoot_Inbound__e e : fresh) {
-            latestByKey.put(convKey(e.Channel_Id__c, e.From_Number__c), e);
+            latestByKey.put(convKey(channelKeyOf(e), e.From_Number__c), e);
         }
 
         List<Conversation__c> toUpsert = new List<Conversation__c>();
         for (String key : latestByKey.keySet()) {
             MaxDoot_Inbound__e e = latestByKey.get(key);
-            Channel__c ch = channelByHeydootId.get(e.Channel_Id__c);
+            Channel__c ch = channelForEvent.get(e);
             Conversation__c cv = convByKey.get(key);
             if (cv == null) {
                 cv = new Conversation__c(
@@ -141,7 +149,7 @@ public without sharing class MaxDootInboundHandler {
         // 6. Create messages.
         List<Message__c> toInsert = new List<Message__c>();
         for (MaxDoot_Inbound__e e : fresh) {
-            Id convId = convIdByKey.get(convKey(e.Channel_Id__c, e.From_Number__c));
+            Id convId = convIdByKey.get(convKey(channelKeyOf(e), e.From_Number__c));
             if (convId == null) continue;
             toInsert.add(new Message__c(
                 Conversation__c = convId,
@@ -163,7 +171,7 @@ public without sharing class MaxDootInboundHandler {
     private static Integer countFor(List<MaxDoot_Inbound__e> events, String key) {
         Integer n = 0;
         for (MaxDoot_Inbound__e e : events) {
-            if (convKey(e.Channel_Id__c, e.From_Number__c) == key) n++;
+            if (convKey(channelKeyOf(e), e.From_Number__c) == key) n++;
         }
         return n;
     }
@@ -171,6 +179,28 @@ public without sharing class MaxDootInboundHandler {
     @TestVisible
     private static String convKey(String channelId, String number) {
         return (channelId == null ? '' : channelId) + ':' + (number == null ? '' : number);
+    }
+
+    /** Stable per-event channel discriminator: heydoot channel id if present, else our number. */
+    @TestVisible
+    private static String channelKeyOf(MaxDoot_Inbound__e e) {
+        if (String.isNotBlank(e.Channel_Id__c)) return e.Channel_Id__c;
+        return String.isBlank(e.To_Number__c) ? 'unknown' : digits(e.To_Number__c);
+    }
+
+    private static Channel__c resolveChannel(MaxDoot_Inbound__e e,
+            Map<String, Channel__c> byHeydootId, Map<String, Channel__c> byNumber) {
+        if (String.isNotBlank(e.Channel_Id__c) && byHeydootId.containsKey(e.Channel_Id__c)) {
+            return byHeydootId.get(e.Channel_Id__c);
+        }
+        if (String.isNotBlank(e.To_Number__c)) {
+            return byNumber.get(digits(e.To_Number__c));
+        }
+        return null;
+    }
+
+    private static String digits(String s) {
+        return s == null ? '' : s.replaceAll('[^0-9]', '');
     }
 
     private static String preview(String body, String mediaUrl) {

@@ -13,14 +13,16 @@ public with sharing class MaxDootHeydootClient {
         @AuraEnabled public String status;
     }
 
-    private static HttpRequest baseRequest(String method, String path) {
-        MaxDoot_Config__mdt cfg = MaxDootConfig.get();
+    private static HttpRequest baseRequest(String method, String path, String bearerToken) {
         HttpRequest req = new HttpRequest();
         req.setMethod(method);
         req.setEndpoint(MaxDootConfig.namedCredential() + path);
         req.setHeader('Content-Type', 'application/json');
-        if (String.isNotBlank(cfg.Api_Key__c)) {
-            req.setHeader('Authorization', 'Bearer ' + cfg.Api_Key__c);
+        // Multi-number: the per-channel bearer token identifies which WhatsApp number sends.
+        // Falls back to the global config key only if a channel token is not provided.
+        String token = String.isNotBlank(bearerToken) ? bearerToken : MaxDootConfig.get().Api_Key__c;
+        if (String.isNotBlank(token)) {
+            req.setHeader('Authorization', 'Bearer ' + token);
         }
         req.setTimeout(120000);
         return req;
@@ -30,10 +32,10 @@ public with sharing class MaxDootHeydootClient {
         return template == null ? '' : template.replace('{channelId}', channelId == null ? '' : channelId);
     }
 
-    /** Send a text and/or media message through a channel. Returns the heydoot message id. */
-    public static SendResult sendMessage(String channelId, String toNumber, String body, String mediaUrl) {
+    /** Send a text and/or media message from a channel (identified by its bearer token). */
+    public static SendResult sendMessage(String bearerToken, String channelId, String toNumber, String body, String mediaUrl) {
         MaxDoot_Config__mdt cfg = MaxDootConfig.get();
-        HttpRequest req = baseRequest('POST', resolve(cfg.Send_Path__c, channelId));
+        HttpRequest req = baseRequest('POST', resolve(cfg.Send_Path__c, channelId), bearerToken);
 
         Map<String, Object> payload = new Map<String, Object>{
             'to' => toNumber,
@@ -68,9 +70,9 @@ public with sharing class MaxDootHeydootClient {
     }
 
     /** Fetch the login QR for a channel. Returns the raw body (data-URL or QR string). */
-    public static String getQr(String channelId) {
+    public static String getQr(String bearerToken, String channelId) {
         MaxDoot_Config__mdt cfg = MaxDootConfig.get();
-        HttpRequest req = baseRequest('GET', resolve(cfg.QR_Path__c, channelId));
+        HttpRequest req = baseRequest('GET', resolve(cfg.QR_Path__c, channelId), bearerToken);
         HttpResponse res = new Http().send(req);
         if (res.getStatusCode() < 200 || res.getStatusCode() >= 300) {
             throw new HeydootException('heydoot QR fetch failed (' + res.getStatusCode() + '): ' + res.getBody());
@@ -91,9 +93,9 @@ public with sharing class MaxDootHeydootClient {
     }
 
     /** Fetch the session status for a channel: Connected | Disconnected | NeedsScan. */
-    public static String getStatus(String channelId) {
+    public static String getStatus(String bearerToken, String channelId) {
         MaxDoot_Config__mdt cfg = MaxDootConfig.get();
-        HttpRequest req = baseRequest('GET', resolve(cfg.Status_Path__c, channelId));
+        HttpRequest req = baseRequest('GET', resolve(cfg.Status_Path__c, channelId), bearerToken);
         HttpResponse res = new Http().send(req);
         if (res.getStatusCode() < 200 || res.getStatusCode() >= 300) {
             throw new HeydootException('heydoot status fetch failed (' + res.getStatusCode() + '): ' + res.getBody());

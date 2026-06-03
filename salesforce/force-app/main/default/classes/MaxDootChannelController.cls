@@ -6,10 +6,11 @@ public with sharing class MaxDootChannelController {
 
     @AuraEnabled(cacheable=true)
     public static List<Channel__c> getChannels() {
+        // Note: Bearer_Token__c is intentionally NOT returned to the client.
         return [
             SELECT Id, Name, Heydoot_Channel_Id__c, WhatsApp_Number__c, Scope__c,
                    Team__c, Assigned_Agent__c, Assigned_Agent__r.Name,
-                   Session_Status__c, Active__c
+                   Session_Status__c, Active__c, Iframe_QR_URL__c
             FROM Channel__c
             ORDER BY Name ASC
             LIMIT 200
@@ -21,7 +22,7 @@ public with sharing class MaxDootChannelController {
     public static String getQr(Id channelId) {
         Channel__c ch = loadChannel(channelId);
         try {
-            return MaxDootHeydootClient.getQr(ch.Heydoot_Channel_Id__c);
+            return MaxDootHeydootClient.getQr(ch.Bearer_Token__c, ch.Heydoot_Channel_Id__c);
         } catch (Exception e) {
             throw new AuraHandledException('Could not fetch QR: ' + e.getMessage());
         }
@@ -33,7 +34,7 @@ public with sharing class MaxDootChannelController {
         Channel__c ch = loadChannel(channelId);
         String status;
         try {
-            status = MaxDootHeydootClient.getStatus(ch.Heydoot_Channel_Id__c);
+            status = MaxDootHeydootClient.getStatus(ch.Bearer_Token__c, ch.Heydoot_Channel_Id__c);
         } catch (Exception e) {
             throw new AuraHandledException('Could not fetch status: ' + e.getMessage());
         }
@@ -45,14 +46,14 @@ public with sharing class MaxDootChannelController {
 
     private static Channel__c loadChannel(Id channelId) {
         List<Channel__c> chs = [
-            SELECT Id, Heydoot_Channel_Id__c, Session_Status__c
+            SELECT Id, Heydoot_Channel_Id__c, Bearer_Token__c, Session_Status__c
             FROM Channel__c WHERE Id = :channelId LIMIT 1
         ];
         if (chs.isEmpty()) {
             throw new AuraHandledException('Channel not found.');
         }
-        if (String.isBlank(chs[0].Heydoot_Channel_Id__c)) {
-            throw new AuraHandledException('Channel has no heydoot Channel Id configured.');
+        if (String.isBlank(chs[0].Bearer_Token__c)) {
+            throw new AuraHandledException('Channel has no bearer token configured.');
         }
         return chs[0];
     }

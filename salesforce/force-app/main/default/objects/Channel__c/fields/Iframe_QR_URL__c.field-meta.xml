@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Iframe_QR_URL__c</fullName>
+    <label>QR Login URL (iframe)</label>
+    <description>Optional. If heydoot exposes its login/QR page as an embeddable URL, set it here to render the QR inside Salesforce via iframe. The domain must be added to CSP Trusted Sites (frame-src). If blank, MaxDoot falls back to the QR API path.</description>
+    <type>Url</type>
+    <required>false</required>
+</CustomField>

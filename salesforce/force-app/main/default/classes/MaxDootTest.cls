@@ -20,6 +20,7 @@ private class MaxDootTest {
             Name = 'Sales',
             Heydoot_Channel_Id__c = 'chan-1',
             WhatsApp_Number__c = '+10000000000',
+            Bearer_Token__c = 'tok-secret',
             Scope__c = 'Org',
             Session_Status__c = 'Connected',
             Active__c = true
@@ -85,6 +86,22 @@ private class MaxDootTest {
         // Replay the same message id.
         MaxDootInboundHandler.handle(new List<MaxDoot_Inbound__e>{ e });
         System.assertEquals(1, [SELECT COUNT() FROM Message__c WHERE Heydoot_Message_Id__c = 'dup-1']);
+    }
+
+    @isTest
+    static void inboundHandler_matchesChannelByNumber() {
+        MaxDootConfig.override = cfg();
+        makeChannel(); // WhatsApp_Number__c = +10000000000
+        MaxDoot_Inbound__e e = new MaxDoot_Inbound__e(
+            Event_Type__c = 'message', Channel_Id__c = null,
+            To_Number__c = '+1 000-000-0000', From_Number__c = '+15551239999',
+            Message_Id__c = 'bynum-1', Body__c = 'hi by number'
+        );
+        MaxDootInboundHandler.handle(new List<MaxDoot_Inbound__e>{ e });
+        Conversation__c cv = [
+            SELECT Channel__c FROM Conversation__c WHERE Customer_Number__c = '+15551239999' LIMIT 1
+        ];
+        System.assertNotEquals(null, cv.Channel__c, 'channel matched by destination number');
     }
 
     @isTest

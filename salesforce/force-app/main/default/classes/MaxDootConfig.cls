@@ -14,9 +14,9 @@ public with sharing class MaxDootConfig {
         if (cfg == null) {
             // Defensive fallback so the app degrades gracefully if the record is missing.
             cfg = new MaxDoot_Config__mdt(
-                Send_Path__c = '/v1/channels/{channelId}/messages',
-                QR_Path__c = '/v1/channels/{channelId}/qr',
-                Status_Path__c = '/v1/channels/{channelId}/status'
+                Send_Path__c = '/v1/messages',
+                QR_Path__c = '/v1/qr',
+                Status_Path__c = '/v1/status'
             );
         }
         return cfg;

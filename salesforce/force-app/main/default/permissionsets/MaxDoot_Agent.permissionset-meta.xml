@@ -62,6 +62,11 @@
         <readable>true</readable>
         <editable>false</editable>
     </fieldPermissions>
+    <fieldPermissions>
+        <field>Channel__c.Iframe_QR_URL__c</field>
+        <readable>true</readable>
+        <editable>false</editable>
+    </fieldPermissions>
 
     <fieldPermissions>
         <field>Conversation__c.Channel__c</field>

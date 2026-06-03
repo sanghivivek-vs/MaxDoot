@@ -42,19 +42,32 @@
                         Open WhatsApp on the phone → Linked devices → Link a device, then scan:
                     </div>
 
-                    <template lwc:if={qrLoading}>
-                        <lightning-spinner alternative-text="Loading QR" size="small"></lightning-spinner>
+                    <!-- Preferred: embed heydoot's login/QR page directly. -->
+                    <template lwc:if={useIframe}>
+                        <iframe
+                            src={selectedIframeUrl}
+                            class="maxdoot-qr-frame"
+                            title="WhatsApp Login">
+                        </iframe>
                     </template>
 
-                    <template lwc:if={qrIsImage}>
-                        <img src={qrValue} alt="WhatsApp QR" class="maxdoot-qr" />
-                    </template>
-                    <template lwc:if={qrIsText}>
-                        <pre class="maxdoot-qr-text">{qrValue}</pre>
+                    <!-- Fallback: fetch the QR via the heydoot API and render it. -->
+                    <template lwc:if={useApiQr}>
+                        <template lwc:if={qrLoading}>
+                            <lightning-spinner alternative-text="Loading QR" size="small"></lightning-spinner>
+                        </template>
+                        <template lwc:if={qrIsImage}>
+                            <img src={qrValue} alt="WhatsApp QR" class="maxdoot-qr" />
+                        </template>
+                        <template lwc:if={qrIsText}>
+                            <pre class="maxdoot-qr-text">{qrValue}</pre>
+                        </template>
                     </template>
 
                     <div class="slds-p-top_small">
-                        <lightning-button label="Load QR" icon-name="utility:photo" onclick={handleLoadQr}></lightning-button>
+                        <template lwc:if={useApiQr}>
+                            <lightning-button label="Load QR" icon-name="utility:photo" onclick={handleLoadQr}></lightning-button>
+                        </template>
                         <lightning-button
                             class="slds-p-left_x-small"
                             label="Refresh Status"

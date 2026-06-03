@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Bearer_Token__c</fullName>
+    <label>Bearer Token</label>
+    <description>Per-number heydoot API bearer token. The token identifies which WhatsApp number/session this channel sends from. SENSITIVE: protect with FLS; consider Shield encryption or migrating to a per-channel Named Credential for production.</description>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

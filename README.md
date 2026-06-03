@@ -57,33 +57,65 @@ sf org assign permset -n MaxDoot_Admin -o <your-org-alias>   # for setup / integ
 ## Configure the heydoot link (post-deploy)
 
 1. **Named Credential** — Setup → Named Credentials → `heydoot`: set the URL to
-   your heydoot base URL. (For production auth, migrate this to an External
-   Credential principal instead of the API-key field below.)
-2. **MaxDoot Config** (`MaxDoot_Config__mdt`, record `Default`):
-   - `Api_Key__c` — bearer token sent to heydoot on outbound calls.
+   your heydoot base URL.
+2. **CSP Trusted Site** — Setup → CSP Trusted Sites → `heydoot`: update the
+   endpoint to your heydoot domain (required for the QR iframe to render).
+3. **MaxDoot Config** (`MaxDoot_Config__mdt`, record `Default`):
    - `Inbound_Token__c` — shared secret heydoot must send in the
-     `X-MaxDoot-Token` header.
+     `X-MaxDoot-Token` header on inbound webhooks.
    - `Send_Path__c`, `QR_Path__c`, `Status_Path__c` — adjust to heydoot's real
-     endpoints (defaults assume `/v1/channels/{channelId}/...`).
-3. **heydoot webhook** — point heydoot's inbound webhook at:
-   `https://<your-domain>/services/apexrest/maxdoot/inbound`
+     endpoints (token-scoped defaults: `/v1/messages`, `/v1/qr`, `/v1/status`).
+   - `Api_Key__c` — optional global fallback token (per-channel tokens below are
+     preferred).
+4. **Create a Channel per WhatsApp number** (`Channel__c`):
+   - `Bearer_Token__c` — **the heydoot bearer token for that number/session**
+     (this is how MaxDoot addresses multiple numbers).
+   - `WhatsApp_Number__c` — used to match inbound messages back to the channel.
+   - `Scope` — Org / Team / Agent (+ `Assigned_Agent__c` when Agent).
+   - `Iframe_QR_URL__c` — optional; heydoot's embeddable login/QR page URL.
+5. **Connect the number** — open the **MaxDoot** app → **Channels** → select the
+   channel. If `Iframe_QR_URL__c` is set, the heydoot login page renders inline
+   (scan it); otherwise click **Load QR** (API fallback). Use **Refresh Status**
+   to confirm `Connected`.
+6. **heydoot webhook** — point heydoot's inbound webhook at the endpoint below
    with header `X-MaxDoot-Token: <Inbound_Token__c>`.
-4. **Create a Channel** (`Channel__c`): set `Heydoot_Channel_Id__c`, the WhatsApp
-   number, and `Scope` (Org/Team/Agent). Open the **MaxDoot** app → **Channels**
-   tab → select the channel → **Load QR** → scan with the WhatsApp phone.
+
+### Exposing the inbound webhook endpoint
+
+heydoot needs to POST to Salesforce. The Apex REST path is:
+
+```
+/services/apexrest/maxdoot/inbound
+```
+
+Salesforce Apex REST normally requires an authenticated session, so pick one:
+
+- **Public Site (recommended for a webhook):** create a Force.com **Site**, and
+  grant the Site **guest user** access to the `MaxDootInboundResource` Apex class.
+  heydoot then POSTs to
+  `https://<your-site-domain>/services/apexrest/maxdoot/inbound`
+  with no Salesforce login — security is enforced by the `X-MaxDoot-Token` header.
+- **OAuth:** create a Connected App; heydoot obtains a Salesforce access token
+  (JWT/client-credentials) and calls
+  `https://<MyDomain>.my.salesforce.com/services/apexrest/maxdoot/inbound`
+  with both the SF bearer token and the `X-MaxDoot-Token` header.
+
+> The Site approach is simpler for heydoot to integrate; the token header is the
+> security boundary, so keep `Inbound_Token__c` strong and rotate it.
 
 ---
 
-## heydoot API contract (to confirm)
+## heydoot API contract (confirmed + to pin)
 
-The exact payloads are configurable; current assumptions:
+Auth is a **per-number bearer token** (stored on each `Channel__c`). Paths are
+configurable; current assumptions:
 
-| Direction | Method & path                                   | Notes                              |
-| --------- | ----------------------------------------------- | ---------------------------------- |
-| Send      | `POST {base}/v1/channels/{channelId}/messages`  | `{to, type, text?, mediaUrl?}`     |
-| QR        | `GET  {base}/v1/channels/{channelId}/qr`        | returns `{qr}` or a data-URL/string |
-| Status    | `GET  {base}/v1/channels/{channelId}/status`    | returns `{status}`                 |
-| Inbound   | `POST /services/apexrest/maxdoot/inbound`       | heydoot → Salesforce, token header |
+| Direction | Method & path               | Auth                    | Notes                               |
+| --------- | --------------------------- | ----------------------- | ----------------------------------- |
+| Send      | `POST {base}/v1/messages`   | `Bearer <channel tok>`  | `{to, type, text?, mediaUrl?}`      |
+| QR        | iframe `Iframe_QR_URL__c`, or `GET {base}/v1/qr` | `Bearer <channel tok>` | iframe preferred |
+| Status    | `GET  {base}/v1/status`     | `Bearer <channel tok>`  | returns `{status}`                  |
+| Inbound   | `POST /services/apexrest/maxdoot/inbound` | `X-MaxDoot-Token` header | heydoot → Salesforce |
 
 Inbound webhook body (single event or `{events:[...]}`):
 

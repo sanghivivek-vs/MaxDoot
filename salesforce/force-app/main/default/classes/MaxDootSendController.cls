@@ -37,21 +37,23 @@ public with sharing class MaxDootSendController {
             throw new AuraHandledException('Message is empty.');
         }
         List<Conversation__c> convs = [
-            SELECT Id, Customer_Number__c, Channel__r.Heydoot_Channel_Id__c, Channel__r.Active__c
+            SELECT Id, Customer_Number__c, Channel__c,
+                   Channel__r.Heydoot_Channel_Id__c, Channel__r.Bearer_Token__c, Channel__r.Active__c
             FROM Conversation__c WHERE Id = :conversationId LIMIT 1
         ];
         if (convs.isEmpty()) {
             throw new AuraHandledException('Conversation not found.');
         }
         Conversation__c conv = convs[0];
-        if (conv.Channel__c == null || String.isBlank(conv.Channel__r.Heydoot_Channel_Id__c)) {
-            throw new AuraHandledException('This conversation has no connected channel.');
+        if (conv.Channel__c == null || String.isBlank(conv.Channel__r.Bearer_Token__c)) {
+            throw new AuraHandledException('This conversation has no connected channel (missing bearer token).');
         }
 
         MaxDootHeydootClient.SendResult result;
         try {
             result = MaxDootHeydootClient.sendMessage(
-                conv.Channel__r.Heydoot_Channel_Id__c, conv.Customer_Number__c, body, mediaUrl
+                conv.Channel__r.Bearer_Token__c, conv.Channel__r.Heydoot_Channel_Id__c,
+                conv.Customer_Number__c, body, mediaUrl
             );
         } catch (Exception e) {
             throw new AuraHandledException('Send failed: ' + e.getMessage());
