@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scope__c</fullName>
+    <label>Scope</label>
+    <description>Routing scope for this channel: org-wide, a team, or a single agent.</description>
+    <type>Picklist</type>
+    <required>true</required>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Org</fullName>
+                <default>true</default>
+                <label>Org</label>
+            </value>
+            <value>
+                <fullName>Team</fullName>
+                <default>false</default>
+                <label>Team</label>
+            </value>
+            <value>
+                <fullName>Agent</fullName>
+                <default>false</default>
+                <label>Agent</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

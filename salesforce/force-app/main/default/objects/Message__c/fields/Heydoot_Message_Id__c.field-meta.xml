@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Heydoot_Message_Id__c</fullName>
+    <label>heydoot Message Id</label>
+    <description>Provider message id from heydoot. Used as the idempotency key for at-least-once webhooks.</description>
+    <type>Text</type>
+    <length>255</length>
+    <externalId>true</externalId>
+    <unique>true</unique>
+    <required>false</required>
+</CustomField>

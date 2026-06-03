@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>A single WhatsApp message (inbound or outbound) within a conversation.</description>
+    <label>WhatsApp Message</label>
+    <pluralLabel>WhatsApp Messages</pluralLabel>
+    <nameField>
+        <label>Message Number</label>
+        <type>AutoNumber</type>
+        <displayFormat>WM-{00000000}</displayFormat>
+    </nameField>
+    <sharingModel>ControlledByParent</sharingModel>
+    <enableActivities>false</enableActivities>
+    <enableHistory>false</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <visibility>Public</visibility>
+</CustomObject>

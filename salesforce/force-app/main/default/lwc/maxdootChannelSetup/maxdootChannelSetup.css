@@ -1,0 +1,25 @@
+.maxdoot-channel-item {
+    cursor: pointer;
+    border-radius: 0.25rem;
+}
+.maxdoot-channel-item:hover {
+    background: #f3f3f3;
+}
+.maxdoot-channel-selected {
+    background: #eef4ff;
+    border-left: 3px solid #1b96ff;
+}
+.maxdoot-qr {
+    width: 240px;
+    height: 240px;
+    image-rendering: pixelated;
+}
+.maxdoot-qr-text {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.7rem;
+    text-align: left;
+}
+.maxdoot-qr-empty {
+    height: 240px;
+}

@@ -1,0 +1,24 @@
+<template>
+    <div class="slds-card slds-p-around_none maxdoot-console">
+        <lightning-tabset variant="scoped">
+            <lightning-tab label="Conversations">
+                <div class="slds-grid maxdoot-grid">
+                    <div class="slds-col slds-size_1-of-3 maxdoot-inbox-col slds-border_right">
+                        <c-maxdoot-inbox onselect={handleSelect}></c-maxdoot-inbox>
+                    </div>
+                    <div class="slds-col slds-size_2-of-3 maxdoot-thread-col">
+                        <c-maxdoot-conversation
+                            conversation-id={selectedConversationId}>
+                        </c-maxdoot-conversation>
+                    </div>
+                </div>
+            </lightning-tab>
+            <lightning-tab label="Dashboard">
+                <c-maxdoot-dashboard></c-maxdoot-dashboard>
+            </lightning-tab>
+            <lightning-tab label="Channels">
+                <c-maxdoot-channel-setup></c-maxdoot-channel-setup>
+            </lightning-tab>
+        </lightning-tabset>
+    </div>
+</template>

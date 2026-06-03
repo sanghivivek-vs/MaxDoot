@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Owner_Agent__c</fullName>
+    <label>Owner Agent</label>
+    <description>Agent currently handling the conversation.</description>
+    <type>Lookup</type>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Owned WhatsApp Conversations</relationshipLabel>
+    <relationshipName>Owned_MaxDoot_Conversations</relationshipName>
+    <required>false</required>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

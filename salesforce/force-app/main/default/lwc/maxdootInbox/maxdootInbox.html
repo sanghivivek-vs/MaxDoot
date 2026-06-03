@@ -1,0 +1,47 @@
+<template>
+    <div class="slds-p-around_x-small slds-border_bottom maxdoot-inbox-header">
+        <lightning-input
+            type="search"
+            variant="label-hidden"
+            placeholder="Search conversations"
+            value={searchTerm}
+            onchange={handleSearch}>
+        </lightning-input>
+    </div>
+
+    <template lwc:if={loading}>
+        <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+    </template>
+
+    <ul class="slds-has-dividers_bottom-space">
+        <template for:each={filtered} for:item="c">
+            <li key={c.Id}
+                class={c.cssClass}
+                data-id={c.Id}
+                onclick={handleClick}>
+                <div class="slds-grid slds-grid_align-spread slds-p-around_x-small">
+                    <div class="slds-truncate">
+                        <span class="slds-text-body_regular slds-text-color_default">
+                            <strong>{c.displayName}</strong>
+                        </span>
+                        <div class="slds-text-body_small slds-text-color_weak slds-truncate">
+                            {c.Last_Message_Preview__c}
+                        </div>
+                    </div>
+                    <div class="slds-text-align_right">
+                        <template lwc:if={c.hasUnread}>
+                            <span class="slds-badge slds-theme_inverse">{c.Unread_Count__c}</span>
+                        </template>
+                        <div class="slds-text-body_small slds-text-color_weak">{c.relativeTime}</div>
+                    </div>
+                </div>
+            </li>
+        </template>
+    </ul>
+
+    <template lwc:if={isEmpty}>
+        <div class="slds-p-around_medium slds-text-color_weak slds-text-align_center">
+            No open conversations.
+        </div>
+    </template>
+</template>

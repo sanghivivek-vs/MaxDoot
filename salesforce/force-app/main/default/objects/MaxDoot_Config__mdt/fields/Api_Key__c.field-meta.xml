@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Api_Key__c</fullName>
+    <label>API Key</label>
+    <description>Bearer token / API key presented to heydoot on outbound callouts. NOTE: stored in protected metadata as a stopgap; migrate to a Named/External Credential principal for production.</description>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Heydoot_Channel_Id__c</fullName>
+    <label>heydoot Channel Id</label>
+    <description>Identifier of the corresponding channel/session in the heydoot engine.</description>
+    <type>Text</type>
+    <length>255</length>
+    <externalId>true</externalId>
+    <unique>true</unique>
+    <required>false</required>
+</CustomField>

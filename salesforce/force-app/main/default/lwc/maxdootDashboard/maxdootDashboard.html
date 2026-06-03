@@ -1,0 +1,20 @@
+<template>
+    <div class="slds-p-around_medium">
+        <template lwc:if={loading}>
+            <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+        </template>
+        <div class="slds-grid slds-wrap slds-gutters">
+            <template for:each={cards} for:item="card">
+                <div key={card.label} class="slds-col slds-size_1-of-2 slds-medium-size_1-of-5 slds-p-around_x-small">
+                    <div class="slds-box slds-box_small slds-text-align_center maxdoot-kpi">
+                        <div class="slds-text-heading_large">{card.value}</div>
+                        <div class="slds-text-body_small slds-text-color_weak">{card.label}</div>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <div class="slds-p-top_small">
+            <lightning-button label="Refresh" icon-name="utility:refresh" onclick={handleRefresh}></lightning-button>
+        </div>
+    </div>
+</template>

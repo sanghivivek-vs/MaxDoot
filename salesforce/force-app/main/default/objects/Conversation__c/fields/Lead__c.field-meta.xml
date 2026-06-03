@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lead__c</fullName>
+    <label>Lead</label>
+    <description>Matched Lead for the customer number, if any.</description>
+    <type>Lookup</type>
+    <referenceTo>Lead</referenceTo>
+    <relationshipLabel>WhatsApp Conversations</relationshipLabel>
+    <relationshipName>MaxDoot_Conversations</relationshipName>
+    <required>false</required>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

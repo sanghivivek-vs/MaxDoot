@@ -1,0 +1,33 @@
+.maxdoot-thread {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    background: #f7f9fb;
+}
+.maxdoot-bubble {
+    max-width: 70%;
+    padding: 0.5rem 0.75rem;
+    margin: 0.25rem 0;
+    border-radius: 0.75rem;
+    word-break: break-word;
+}
+.maxdoot-bubble-in {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-bottom-left-radius: 0.125rem;
+}
+.maxdoot-bubble-out {
+    background: #d9fdd3;
+    border-bottom-right-radius: 0.125rem;
+}
+.maxdoot-meta {
+    color: #7a7a7a;
+    margin-top: 0.125rem;
+    text-align: right;
+}
+.maxdoot-composer {
+    background: #ffffff;
+}
+.maxdoot-empty {
+    height: 100%;
+    min-height: 320px;
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Inbound_Token__c</fullName>
+    <label>Inbound Token</label>
+    <description>Shared secret heydoot must present in the X-MaxDoot-Token header on inbound webhooks.</description>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

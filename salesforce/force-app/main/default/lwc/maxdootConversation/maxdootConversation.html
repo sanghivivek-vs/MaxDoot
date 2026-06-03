@@ -1,0 +1,61 @@
+<template>
+    <template lwc:if={hasConversation}>
+        <div class="maxdoot-thread slds-p-around_small">
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+            <template for:each={messages} for:item="m">
+                <div key={m.Id} class={m.rowClass}>
+                    <div class={m.bubbleClass}>
+                        <template lwc:if={m.Media_URL__c}>
+                            <a href={m.Media_URL__c} target="_blank">📎 attachment</a>
+                        </template>
+                        <div class="maxdoot-body">{m.Body__c}</div>
+                        <div class="maxdoot-meta slds-text-body_small">
+                            {m.timeLabel}
+                            <template lwc:if={m.isOutbound}> · {m.Status__c}</template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <template lwc:if={isEmpty}>
+                <div class="slds-text-color_weak slds-p-around_medium slds-text-align_center">
+                    No messages yet.
+                </div>
+            </template>
+        </div>
+
+        <div class="maxdoot-composer slds-p-around_x-small slds-border_top">
+            <template lwc:if={windowClosed}>
+                <div class="slds-text-color_weak slds-text-body_small slds-p-bottom_xx-small">
+                    ⚠️ 24-hour window has elapsed — only template messages may deliver on the Business API.
+                </div>
+            </template>
+            <div class="slds-grid slds-grid_vertical-align-end">
+                <div class="slds-col slds-grow">
+                    <lightning-textarea
+                        variant="label-hidden"
+                        placeholder="Type a message…"
+                        value={draft}
+                        onchange={handleDraft}>
+                    </lightning-textarea>
+                </div>
+                <div class="slds-col slds-p-left_x-small">
+                    <lightning-button
+                        variant="brand"
+                        label="Send"
+                        icon-name="utility:send"
+                        disabled={sendDisabled}
+                        onclick={handleSend}>
+                    </lightning-button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template lwc:if={noConversation}>
+        <div class="slds-align_absolute-center maxdoot-empty slds-text-color_weak">
+            Select a conversation to start messaging.
+        </div>
+    </template>
+</template>

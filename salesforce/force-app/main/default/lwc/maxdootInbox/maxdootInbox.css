@@ -1,0 +1,17 @@
+.maxdoot-conv-item {
+    cursor: pointer;
+    border-radius: 0.25rem;
+}
+.maxdoot-conv-item:hover {
+    background-color: #f3f3f3;
+}
+.maxdoot-conv-selected {
+    background-color: #eef4ff;
+    border-left: 3px solid #1b96ff;
+}
+.maxdoot-inbox-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+}

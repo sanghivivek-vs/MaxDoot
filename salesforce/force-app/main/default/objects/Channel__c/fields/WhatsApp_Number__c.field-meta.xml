@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>WhatsApp_Number__c</fullName>
+    <label>WhatsApp Number</label>
+    <description>The WhatsApp phone number (E.164) bound to this channel.</description>
+    <type>Phone</type>
+    <required>false</required>
+</CustomField>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>MaxDoot</label>
+    <description>WhatsApp conversations inside Salesforce, powered by heydoot.</description>
+    <navType>Standard</navType>
+    <uiType>Lightning</uiType>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <tabs>MaxDoot_Console</tabs>
+    <tabs>Channel__c</tabs>
+    <tabs>Conversation__c</tabs>
+</CustomApplication>

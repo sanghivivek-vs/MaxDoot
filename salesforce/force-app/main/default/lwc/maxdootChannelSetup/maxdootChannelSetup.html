@@ -1,0 +1,77 @@
+<template>
+    <div class="slds-grid slds-gutters slds-p-around_small">
+        <!-- Channel list -->
+        <div class="slds-col slds-size_1-of-2">
+            <div class="slds-text-title_caps slds-p-bottom_x-small">Channels</div>
+            <template lwc:if={loading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+            <ul class="slds-has-dividers_bottom-space">
+                <template for:each={channels} for:item="ch">
+                    <li key={ch.Id}
+                        class={ch.cssClass}
+                        data-id={ch.Id}
+                        onclick={handleSelect}>
+                        <div class="slds-grid slds-grid_align-spread slds-p-around_x-small">
+                            <div>
+                                <strong>{ch.Name}</strong>
+                                <div class="slds-text-body_small slds-text-color_weak">
+                                    {ch.WhatsApp_Number__c} · {ch.Scope__c}
+                                </div>
+                            </div>
+                            <lightning-badge label={ch.Session_Status__c} class={ch.badgeClass}></lightning-badge>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+            <template lwc:if={noChannels}>
+                <div class="slds-text-color_weak slds-p-around_small">
+                    No channels yet. Create a WhatsApp Channel record with a heydoot Channel Id.
+                </div>
+            </template>
+        </div>
+
+        <!-- QR / connection panel -->
+        <div class="slds-col slds-size_1-of-2">
+            <template lwc:if={selectedChannel}>
+                <div class="slds-box slds-text-align_center">
+                    <div class="slds-text-heading_small slds-p-bottom_x-small">
+                        Connect {selectedChannel.Name}
+                    </div>
+                    <div class="slds-text-body_small slds-text-color_weak slds-p-bottom_small">
+                        Open WhatsApp on the phone → Linked devices → Link a device, then scan:
+                    </div>
+
+                    <template lwc:if={qrLoading}>
+                        <lightning-spinner alternative-text="Loading QR" size="small"></lightning-spinner>
+                    </template>
+
+                    <template lwc:if={qrIsImage}>
+                        <img src={qrValue} alt="WhatsApp QR" class="maxdoot-qr" />
+                    </template>
+                    <template lwc:if={qrIsText}>
+                        <pre class="maxdoot-qr-text">{qrValue}</pre>
+                    </template>
+
+                    <div class="slds-p-top_small">
+                        <lightning-button label="Load QR" icon-name="utility:photo" onclick={handleLoadQr}></lightning-button>
+                        <lightning-button
+                            class="slds-p-left_x-small"
+                            label="Refresh Status"
+                            icon-name="utility:sync"
+                            onclick={handleRefreshStatus}>
+                        </lightning-button>
+                    </div>
+                    <div class="slds-p-top_small slds-text-body_regular">
+                        Status: <strong>{statusLabel}</strong>
+                    </div>
+                </div>
+            </template>
+            <template lwc:if={noSelection}>
+                <div class="slds-align_absolute-center slds-text-color_weak maxdoot-qr-empty">
+                    Select a channel to connect it.
+                </div>
+            </template>
+        </div>
+    </div>
+</template>

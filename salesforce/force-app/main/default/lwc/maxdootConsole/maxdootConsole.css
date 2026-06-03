@@ -1,0 +1,16 @@
+.maxdoot-console {
+    height: 100%;
+}
+.maxdoot-grid {
+    height: 70vh;
+    min-height: 480px;
+}
+.maxdoot-inbox-col {
+    overflow-y: auto;
+    height: 100%;
+}
+.maxdoot-thread-col {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}

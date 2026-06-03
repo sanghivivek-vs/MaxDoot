@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>QR_Path__c</fullName>
+    <label>QR Path</label>
+    <description>Path template returning the login QR for a channel. {channelId} is substituted.</description>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

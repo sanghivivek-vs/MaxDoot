@@ -1,0 +1,5 @@
+**/.eslintrc.json
+**/jsconfig.json
+**/__tests__/**
+*.dup
+**/.DS_Store

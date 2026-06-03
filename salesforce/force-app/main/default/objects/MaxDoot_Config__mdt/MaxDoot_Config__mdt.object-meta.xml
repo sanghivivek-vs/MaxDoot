@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>MaxDoot Config</label>
+    <pluralLabel>MaxDoot Config</pluralLabel>
+    <visibility>Public</visibility>
+    <description>Configuration for the heydoot integration: endpoint path templates and the inbound webhook shared token. Base URL and auth live in the Named Credential.</description>
+</CustomObject>
