@@ -167,6 +167,10 @@
         <apexClass>MaxDootDashboardController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>MaxDootBrandingController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
 
     <tabSettings>
         <tab>MaxDoot_Console</tab>

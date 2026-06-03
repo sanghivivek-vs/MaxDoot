@@ -1,0 +1,40 @@
+<template>
+    <div class="slds-align_absolute-center slds-p-around_large">
+        <div class="maxdoot-about slds-box slds-text-align_center">
+            <div class="maxdoot-brand-badge slds-align_absolute-center">
+                <lightning-icon icon-name="utility:chat" variant="inverse" size="medium"></lightning-icon>
+            </div>
+            <h1 class="slds-text-heading_large slds-p-top_small">{branding.companyName}</h1>
+            <p class="slds-text-body_regular slds-text-color_weak slds-p-bottom_medium">{branding.tagline}</p>
+
+            <div class="slds-text-title_caps slds-p-bottom_x-small">Contact Us</div>
+            <template lwc:if={hasContact}>
+                <ul class="slds-list_vertical slds-text-align_center">
+                    <template lwc:if={branding.supportEmail}>
+                        <li class="slds-p-vertical_xx-small">
+                            <lightning-icon icon-name="utility:email" size="x-small" class="slds-p-right_x-small"></lightning-icon>
+                            <a href={emailHref}>{branding.supportEmail}</a>
+                        </li>
+                    </template>
+                    <template lwc:if={branding.supportPhone}>
+                        <li class="slds-p-vertical_xx-small">
+                            <lightning-icon icon-name="utility:call" size="x-small" class="slds-p-right_x-small"></lightning-icon>
+                            <a href={phoneHref}>{branding.supportPhone}</a>
+                        </li>
+                    </template>
+                    <template lwc:if={branding.supportUrl}>
+                        <li class="slds-p-vertical_xx-small">
+                            <lightning-icon icon-name="utility:world" size="x-small" class="slds-p-right_x-small"></lightning-icon>
+                            <a href={branding.supportUrl} target="_blank" rel="noopener">{branding.supportUrl}</a>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <template lwc:if={noContact}>
+                <p class="slds-text-body_small slds-text-color_weak">
+                    Contact details not configured yet.
+                </p>
+            </template>
+        </div>
+    </div>
+</template>

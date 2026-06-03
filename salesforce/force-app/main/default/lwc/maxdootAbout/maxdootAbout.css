@@ -1,0 +1,11 @@
+.maxdoot-about {
+    max-width: 420px;
+    width: 100%;
+}
+.maxdoot-brand-badge {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: #128c7e;
+}

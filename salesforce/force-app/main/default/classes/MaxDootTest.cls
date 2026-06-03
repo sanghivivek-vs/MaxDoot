@@ -210,6 +210,21 @@ private class MaxDootTest {
     }
 
     @isTest
+    static void branding_returnsConfiguredValuesAndHidesPlaceholders() {
+        MaxDoot_Config__mdt c = cfg();
+        c.Company_Name__c = 'Max Health';
+        c.Tagline__c = 'Care that connects';
+        c.Support_Email__c = 'help@example.com';
+        c.Support_Phone__c = 'REPLACE_WITH_MAX_HEALTH_SUPPORT_PHONE';
+        MaxDootConfig.override = c;
+
+        MaxDootBrandingController.Branding b = MaxDootBrandingController.getBranding();
+        System.assertEquals('Max Health', b.companyName);
+        System.assertEquals('help@example.com', b.supportEmail);
+        System.assertEquals(null, b.supportPhone, 'placeholder should be hidden');
+    }
+
+    @isTest
     static void routing_matchesContactByPhone() {
         Contact c = new Contact(LastName = 'Doe', Phone = '+1 (415) 555-2671');
         insert c;

@@ -22,4 +22,24 @@
         <field>Status_Path__c</field>
         <value xsi:type="xsd:string">/v1/status</value>
     </values>
+    <values>
+        <field>Company_Name__c</field>
+        <value xsi:type="xsd:string">MaxDoot</value>
+    </values>
+    <values>
+        <field>Tagline__c</field>
+        <value xsi:type="xsd:string">WhatsApp conversations, natively in Salesforce</value>
+    </values>
+    <values>
+        <field>Support_Email__c</field>
+        <value xsi:type="xsd:string">REPLACE_WITH_MAX_HEALTH_SUPPORT_EMAIL</value>
+    </values>
+    <values>
+        <field>Support_Phone__c</field>
+        <value xsi:type="xsd:string">REPLACE_WITH_MAX_HEALTH_SUPPORT_PHONE</value>
+    </values>
+    <values>
+        <field>Support_URL__c</field>
+        <value xsi:type="xsd:string">REPLACE_WITH_MAX_HEALTH_SUPPORT_URL</value>
+    </values>
 </CustomMetadata>
