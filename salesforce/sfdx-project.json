@@ -3,6 +3,12 @@
     {
       "path": "force-app",
       "default": true
+    },
+    {
+      "path": "site"
+    },
+    {
+      "path": "site-guest"
     }
   ],
   "name": "MaxDoot",

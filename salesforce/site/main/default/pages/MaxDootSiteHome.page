@@ -1,0 +1,5 @@
+<apex:page showHeader="false" sidebar="false" standardStylesheets="false" cache="false" title="MaxDoot">
+    <!-- Minimal index page so the Force.com Site is valid. The real entry point is the
+         Apex REST resource at /services/apexrest/maxdoot/inbound, exposed to the guest user. -->
+    MaxDoot inbound endpoint is active.
+</apex:page>

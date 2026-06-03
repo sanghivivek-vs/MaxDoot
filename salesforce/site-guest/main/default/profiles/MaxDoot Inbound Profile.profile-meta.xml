@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Guest user profile for the "MaxDoot Inbound" Force.com Site.
+  Salesforce auto-creates this profile (named "<Site Label> Profile") when the Site
+  is created, so deploy this AFTER the site (see docs/SITE_SETUP.md).
+  Grants the guest user just enough to receive the inbound webhook:
+   - execute the MaxDootInboundResource Apex REST class
+   - view the site index page
+   - publish (create) the MaxDoot_Inbound__e platform event
+  Security of the endpoint relies on the X-MaxDoot-Token header check in the class.
+-->
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <custom>false</custom>
+    <userLicense>Guest</userLicense>
+
+    <classAccesses>
+        <apexClass>MaxDootInboundResource</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+
+    <pageAccesses>
+        <apexPage>MaxDootSiteHome</apexPage>
+        <enabled>true</enabled>
+    </pageAccesses>
+
+    <objectPermissions>
+        <object>MaxDoot_Inbound__e</object>
+        <allowCreate>true</allowCreate>
+        <allowRead>true</allowRead>
+        <allowEdit>false</allowEdit>
+        <allowDelete>false</allowDelete>
+        <viewAllRecords>false</viewAllRecords>
+        <modifyAllRecords>false</modifyAllRecords>
+    </objectPermissions>
+</Profile>

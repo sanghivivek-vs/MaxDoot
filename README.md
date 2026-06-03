@@ -27,7 +27,15 @@ salesforce/force-app/main/default/
   customMetadata/    MaxDoot_Config.Default (paths, API key, inbound token)
   permissionsets/    MaxDoot_Agent, MaxDoot_Admin
   applications/ tabs/ flexipages/   MaxDoot app + tab + console page
+  cspTrustedSites/   heydoot (allow QR iframe + connections)
+
+salesforce/site/        Force.com Site + Visualforce index (public webhook host)
+salesforce/site-guest/  guest-user profile granting webhook access
 ```
+
+The `site` / `site-guest` directories are **separate package dirs** — the core
+app deploys on its own; deploy the Site bundle only if you use the public-Site
+webhook option (see [`docs/SITE_SETUP.md`](docs/SITE_SETUP.md)).
 
 > **Status:** first end-to-end implementation. It was authored without a live org
 > to compile against, so treat the first deploy as a shakeout — minor
@@ -51,6 +59,9 @@ Then assign a permission set:
 sf org assign permset -n MaxDoot_Agent -o <your-org-alias>
 sf org assign permset -n MaxDoot_Admin -o <your-org-alias>   # for setup / integration user
 ```
+
+For the public inbound webhook host, deploy the Site bundle separately — see
+[`docs/SITE_SETUP.md`](docs/SITE_SETUP.md).
 
 ---
 
@@ -90,11 +101,13 @@ heydoot needs to POST to Salesforce. The Apex REST path is:
 
 Salesforce Apex REST normally requires an authenticated session, so pick one:
 
-- **Public Site (recommended for a webhook):** create a Force.com **Site**, and
-  grant the Site **guest user** access to the `MaxDootInboundResource` Apex class.
-  heydoot then POSTs to
-  `https://<your-site-domain>/services/apexrest/maxdoot/inbound`
-  with no Salesforce login — security is enforced by the `X-MaxDoot-Token` header.
+- **Public Site (recommended, scaffolded):** a Force.com **Site** that exposes
+  `MaxDootInboundResource` to the Site **guest user** is included under
+  `salesforce/site/` + `salesforce/site-guest/`. heydoot POSTs to
+  `https://<your-site-domain>/maxdoot/services/apexrest/maxdoot/inbound`
+  with no Salesforce login — the `X-MaxDoot-Token` header is the security
+  boundary. **See [`docs/SITE_SETUP.md`](docs/SITE_SETUP.md)** for prerequisites,
+  placeholders to edit, and the two-step deploy order.
 - **OAuth:** create a Connected App; heydoot obtains a Salesforce access token
   (JWT/client-credentials) and calls
   `https://<MyDomain>.my.salesforce.com/services/apexrest/maxdoot/inbound`
