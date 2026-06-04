@@ -160,6 +160,65 @@ private class MaxDootTest {
     }
 
     @isTest
+    static void startConversation_createsConversationAndSends() {
+        MaxDootConfig.testOverride = cfg();
+        Channel__c ch = makeChannel();
+
+        Test.setMock(HttpCalloutMock.class, new MaxDootCalloutMock());
+        Test.startTest();
+        Id convId = MaxDootSendController.startConversation(
+            ch.Id, '+15551234567', null, null, 'Hello from MaxDoot', null
+        );
+        Test.stopTest();
+
+        System.assertNotEquals(null, convId, 'returns the conversation id');
+        Conversation__c conv = [
+            SELECT External_Key__c, Customer_Number__c, Channel__c, Status__c, Owner_Agent__c
+            FROM Conversation__c WHERE Id = :convId
+        ];
+        System.assertEquals('chan-1:+15551234567', conv.External_Key__c, 'keyed like inbound');
+        System.assertEquals(ch.Id, conv.Channel__c);
+        System.assertEquals(UserInfo.getUserId(), conv.Owner_Agent__c, 'Org scope falls back to current user');
+        System.assertEquals(1, [
+            SELECT COUNT() FROM Message__c WHERE Conversation__c = :convId AND Direction__c = 'Outbound'
+        ]);
+    }
+
+    @isTest
+    static void startConversation_reusesExistingConversation() {
+        MaxDootConfig.testOverride = cfg();
+        Channel__c ch = makeChannel();
+        Conversation__c existing = new Conversation__c(
+            External_Key__c = 'chan-1:+15559999999', Customer_Number__c = '+15559999999',
+            Channel__c = ch.Id, Status__c = 'Closed'
+        );
+        insert existing;
+
+        Test.setMock(HttpCalloutMock.class, new MaxDootCalloutMock());
+        Test.startTest();
+        Id convId = MaxDootSendController.startConversation(
+            ch.Id, '+15559999999', null, null, 'Reopen please', null
+        );
+        Test.stopTest();
+
+        System.assertEquals(existing.Id, convId, 'reuses the existing conversation');
+        System.assertEquals(1, [SELECT COUNT() FROM Conversation__c], 'no duplicate created');
+        System.assertEquals('Open', [SELECT Status__c FROM Conversation__c WHERE Id = :convId].Status__c);
+    }
+
+    @isTest
+    static void startConversation_validates() {
+        MaxDootConfig.testOverride = cfg();
+        Channel__c ch = makeChannel();
+        try {
+            MaxDootSendController.startConversation(ch.Id, '', null, null, 'hi', null);
+            System.assert(false, 'should require a recipient number');
+        } catch (AuraHandledException e) {
+            System.assert(true);
+        }
+    }
+
+    @isTest
     static void queries_work() {
         MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();

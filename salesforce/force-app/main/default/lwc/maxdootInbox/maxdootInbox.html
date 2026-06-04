@@ -1,12 +1,25 @@
 <template>
     <div class="slds-p-around_x-small slds-border_bottom maxdoot-inbox-header">
-        <lightning-input
-            type="search"
-            variant="label-hidden"
-            placeholder="Search conversations"
-            value={searchTerm}
-            onchange={handleSearch}>
-        </lightning-input>
+        <div class="slds-grid slds-grid_vertical-align-center slds-gutters_x-small">
+            <div class="slds-col slds-grow">
+                <lightning-input
+                    type="search"
+                    variant="label-hidden"
+                    placeholder="Search conversations"
+                    value={searchTerm}
+                    onchange={handleSearch}>
+                </lightning-input>
+            </div>
+            <div class="slds-col slds-no-flex">
+                <lightning-button
+                    variant="brand"
+                    label="New Message"
+                    icon-name="utility:new"
+                    title="Start a new WhatsApp conversation"
+                    onclick={handleNew}>
+                </lightning-button>
+            </div>
+        </div>
     </div>
 
     <template lwc:if={loading}>

@@ -1,0 +1,62 @@
+<template>
+    <lightning-modal-header label={heading}></lightning-modal-header>
+
+    <lightning-modal-body>
+        <template lwc:if={hasChannels}>
+            <lightning-combobox
+                name="channel"
+                label="Send from channel"
+                placeholder="Select a WhatsApp channel"
+                options={channelOptions}
+                value={channelId}
+                onchange={handleChannel}
+                required>
+            </lightning-combobox>
+
+            <lightning-input
+                class="slds-m-top_small"
+                type="tel"
+                label="Recipient WhatsApp number"
+                value={toNumber}
+                onchange={handleNumber}
+                placeholder="+10000000000"
+                required>
+            </lightning-input>
+
+            <lightning-textarea
+                class="slds-m-top_small"
+                name="message"
+                label="Message"
+                value={draft}
+                onchange={handleDraft}
+                placeholder="Type your message"
+                max-length="4096">
+            </lightning-textarea>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-text-color_error slds-m-top_x-small" role="alert">
+                    {errorMessage}
+                </div>
+            </template>
+        </template>
+
+        <template lwc:if={hasChannels} lwc:false>
+            <div class="slds-text-color_weak slds-p-around_small">
+                No channels are set up yet. Create a Channel record with a heydoot
+                bearer token before sending.
+            </div>
+        </template>
+    </lightning-modal-body>
+
+    <lightning-modal-footer>
+        <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+        <lightning-button
+            class="slds-m-left_x-small"
+            variant="brand"
+            label="Send"
+            icon-name="utility:send"
+            disabled={sendDisabled}
+            onclick={handleSend}>
+        </lightning-button>
+    </lightning-modal-footer>
+</template>

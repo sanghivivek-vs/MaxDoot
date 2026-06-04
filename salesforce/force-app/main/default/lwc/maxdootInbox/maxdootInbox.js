@@ -2,6 +2,7 @@ import { LightningElement, track, wire } from 'lwc';
 import { refreshApex } from '@salesforce/apex';
 import { subscribe, unsubscribe, onError } from 'lightning/empApi';
 import getOpenConversations from '@salesforce/apex/MaxDootSendController.getOpenConversations';
+import MaxdootCompose from 'c/maxdootCompose';
 
 const CHANNEL = '/event/MaxDoot_Inbound__e';
 
@@ -100,5 +101,19 @@ export default class MaxdootInbox extends LightningElement {
         this.dispatchEvent(
             new CustomEvent('select', { detail: { conversationId: this.selectedId } })
         );
+    }
+
+    async handleNew() {
+        const conversationId = await MaxdootCompose.open({
+            size: 'small',
+            description: 'Start a new WhatsApp conversation'
+        });
+        if (conversationId) {
+            await this.refresh();
+            this.selectedId = conversationId;
+            this.dispatchEvent(
+                new CustomEvent('select', { detail: { conversationId } })
+            );
+        }
     }
 }

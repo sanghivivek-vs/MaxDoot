@@ -3,3 +3,8 @@
 **/__tests__/**
 *.dup
 **/.DS_Store
+
+# This org's Metadata API rejects CustomMetadata *record* deploys with an
+# UNKNOWN_EXCEPTION (server-side). The Default config record is provisioned via
+# the Apex Metadata API instead (see README). Kept in source for reference.
+**/customMetadata/**

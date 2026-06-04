@@ -78,9 +78,116 @@ public with sharing class MaxDootSendController {
         return msg;
     }
 
+    /**
+     * Start (or reuse) a conversation to a recipient and send the first outbound message.
+     * Proactive outbound: the agent picks a channel + recipient instead of replying to an
+     * existing inbound thread. Returns the conversation id so the UI can open the thread.
+     *
+     * The External_Key__c is computed the same way the inbound handler keys conversations
+     * (channel discriminator + recipient number) so a later inbound reply lands on this
+     * same conversation rather than spawning a duplicate.
+     */
+    @AuraEnabled
+    public static Id startConversation(Id channelId, String toNumber, Id contactId,
+                                       Id leadId, String body, String mediaUrl) {
+        if (channelId == null) {
+            throw new AuraHandledException('Select a channel to send from.');
+        }
+        if (String.isBlank(toNumber)) {
+            throw new AuraHandledException('A recipient WhatsApp number is required.');
+        }
+        if (String.isBlank(body) && String.isBlank(mediaUrl)) {
+            throw new AuraHandledException('Message is empty.');
+        }
+
+        List<Channel__c> chs = [
+            SELECT Id, Heydoot_Channel_Id__c, Bearer_Token__c, WhatsApp_Number__c,
+                   Scope__c, Assigned_Agent__c
+            FROM Channel__c WHERE Id = :channelId LIMIT 1
+        ];
+        if (chs.isEmpty()) {
+            throw new AuraHandledException('Channel not found.');
+        }
+        Channel__c ch = chs[0];
+        if (String.isBlank(ch.Bearer_Token__c)) {
+            throw new AuraHandledException('Selected channel has no bearer token configured.');
+        }
+
+        String channelKey = String.isNotBlank(ch.Heydoot_Channel_Id__c)
+            ? ch.Heydoot_Channel_Id__c : digits(ch.WhatsApp_Number__c);
+        String externalKey = channelKey + ':' + toNumber;
+
+        List<Conversation__c> existing = [
+            SELECT Id, Status__c FROM Conversation__c WHERE External_Key__c = :externalKey LIMIT 1
+        ];
+
+        // Build (but do not yet persist) the conversation so the heydoot callout
+        // happens BEFORE any DML — Apex forbids a callout after uncommitted DML.
+        Conversation__c conv;
+        if (!existing.isEmpty()) {
+            conv = existing[0];
+            if (conv.Status__c == 'Closed') {
+                conv.Status__c = 'Open';
+            }
+        } else {
+            conv = new Conversation__c(
+                External_Key__c = externalKey,
+                Customer_Number__c = toNumber,
+                Channel__c = ch.Id,
+                Status__c = 'Open',
+                Unread_Count__c = 0
+            );
+            if (contactId != null) {
+                conv.Contact__c = contactId;
+            }
+            if (leadId != null) {
+                conv.Lead__c = leadId;
+            }
+            if (contactId == null && leadId == null) {
+                MaxDootRouting.Match m = MaxDootRouting.matchNumbers(new Set<String>{ toNumber }).get(toNumber);
+                if (m != null) {
+                    conv.Contact__c = m.contactId;
+                    conv.Lead__c = m.leadId;
+                }
+            }
+            Id owner = MaxDootRouting.resolveOwner(ch);
+            conv.Owner_Agent__c = owner != null ? owner : UserInfo.getUserId();
+        }
+
+        // 1. Callout first (no DML pending).
+        MaxDootHeydootClient.SendResult result;
+        try {
+            result = MaxDootHeydootClient.sendMessage(
+                ch.Bearer_Token__c, ch.Heydoot_Channel_Id__c, toNumber, body, mediaUrl
+            );
+        } catch (Exception e) {
+            throw new AuraHandledException('Send failed: ' + e.getMessage());
+        }
+
+        // 2. Now persist the conversation + the outbound message.
+        conv.Last_Message_Preview__c = String.isNotBlank(body)
+            ? (body.length() > 255 ? body.substring(0, 255) : body) : '[media]';
+        upsert conv;
+
+        insert new Message__c(
+            Conversation__c = conv.Id,
+            Direction__c = 'Outbound',
+            Body__c = body,
+            Media_URL__c = String.isBlank(mediaUrl) ? null : mediaUrl,
+            Heydoot_Message_Id__c = result == null ? null : result.messageId,
+            Status__c = (result != null && String.isNotBlank(result.status)) ? mapStatus(result.status) : 'Sent',
+            Timestamp__c = System.now()
+        );
+        return conv.Id;
+    }
+
     @AuraEnabled
     public static void markRead(Id conversationId) {
         update new Conversation__c(Id = conversationId, Unread_Count__c = 0);
+    }
+
+    private static String digits(String s) {
+        return s == null ? '' : s.replaceAll('[^0-9]', '');
     }
 
     private static String mapStatus(String raw) {
