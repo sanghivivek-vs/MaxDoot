@@ -61,6 +61,47 @@ private class MaxDootTest {
     }
 
     @isTest
+    static void inboundWebhook_threadsOntoExistingConversation() {
+        // Regression: an inbound reply must land on the already-open conversation
+        // (e.g. a thread started by a proactive outbound send), not throw or duplicate.
+        MaxDootConfig.testOverride = cfg();
+        makeChannel();
+        Conversation__c existing = new Conversation__c(
+            External_Key__c = 'chan-1:+19998887777',
+            Customer_Number__c = '+19998887777',
+            Status__c = 'Closed', // also verifies reopen
+            Unread_Count__c = 0
+        );
+        insert existing;
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/maxdoot/inbound';
+        req.httpMethod = 'POST';
+        req.headers.put('X-MaxDoot-Token', 'secret');
+        req.requestBody = Blob.valueOf(JSON.serialize(new Map<String, Object>{
+            'type' => 'message',
+            'channelId' => 'chan-1',
+            'from' => '+19998887777',
+            'to' => '+10000000000',
+            'messageId' => 'hd-reply-1',
+            'body' => 'Customer reply',
+            'timestamp' => '2026-06-03T11:00:00Z'
+        }));
+        RestContext.request = req;
+        RestContext.response = new RestResponse();
+
+        Test.startTest();
+        MaxDootInboundResource.doPost();
+        Test.stopTest();
+
+        System.assertEquals(1, [SELECT COUNT() FROM Conversation__c], 'no duplicate conversation');
+        Conversation__c after = [SELECT Status__c, Unread_Count__c FROM Conversation__c WHERE Id = :existing.Id];
+        System.assertEquals('Open', after.Status__c, 'closed conversation reopens on inbound');
+        System.assertEquals(1, after.Unread_Count__c, 'unread incremented');
+        System.assertEquals(1, [SELECT COUNT() FROM Message__c WHERE Conversation__c = :existing.Id AND Direction__c = 'Inbound']);
+    }
+
+    @isTest
     static void inboundWebhook_rejectsBadToken() {
         MaxDootConfig.testOverride = cfg();
         RestRequest req = new RestRequest();

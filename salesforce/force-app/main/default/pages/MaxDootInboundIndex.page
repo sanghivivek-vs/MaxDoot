@@ -1,0 +1,3 @@
+<apex:page showHeader="false" sidebar="false" standardStylesheets="false" cache="false">
+    MaxDoot inbound webhook endpoint. POST events to /services/apexrest/maxdoot/inbound
+</apex:page>

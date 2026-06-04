@@ -93,7 +93,7 @@ public without sharing class MaxDootInboundHandler {
 
         Map<String, Conversation__c> convByKey = new Map<String, Conversation__c>();
         for (Conversation__c cv : [
-            SELECT Id, External_Key__c, Unread_Count__c
+            SELECT Id, External_Key__c, Unread_Count__c, Status__c
             FROM Conversation__c WHERE External_Key__c IN :convKeys
         ]) {
             convByKey.put(cv.External_Key__c, cv);
