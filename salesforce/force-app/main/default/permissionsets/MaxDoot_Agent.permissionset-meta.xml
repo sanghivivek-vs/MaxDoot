@@ -43,6 +43,11 @@
         <editable>false</editable>
     </fieldPermissions>
     <fieldPermissions>
+        <field>Channel__c.Active__c</field>
+        <readable>true</readable>
+        <editable>false</editable>
+    </fieldPermissions>
+    <fieldPermissions>
         <field>Channel__c.Session_Status__c</field>
         <readable>true</readable>
         <editable>false</editable>
