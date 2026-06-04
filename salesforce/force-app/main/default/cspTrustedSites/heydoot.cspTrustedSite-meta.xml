@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CspTrustedSite xmlns="http://soap.sforce.com/2006/04/metadata">
-    <endpointUrl>https://heydoot.example.com</endpointUrl>
+    <endpointUrl>https://hs.heydoot.com</endpointUrl>
     <description>heydoot engine. Allows embedding the QR login page (frame-src) and browser connections. Update the endpoint URL to your heydoot domain after deploy.</description>
     <isActive>true</isActive>
     <context>All</context>

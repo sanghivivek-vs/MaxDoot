@@ -32,20 +32,32 @@ public with sharing class MaxDootHeydootClient {
         return template == null ? '' : template.replace('{channelId}', channelId == null ? '' : channelId);
     }
 
+    private static String digits(String s) {
+        return s == null ? '' : s.replaceAll('[^0-9]', '');
+    }
+
     /** Send a text and/or media message from a channel (identified by its bearer token). */
     public static SendResult sendMessage(String bearerToken, String channelId, String toNumber, String body, String mediaUrl) {
         MaxDoot_Config__mdt cfg = MaxDootConfig.get();
         HttpRequest req = baseRequest('POST', resolve(cfg.Send_Path__c, channelId), bearerToken);
 
-        Map<String, Object> payload = new Map<String, Object>{
-            'to' => toNumber,
-            'type' => String.isBlank(mediaUrl) ? 'text' : 'media'
-        };
-        if (String.isNotBlank(body)) {
-            payload.put('text', body);
-        }
+        // heydoot external API is action-based: everything POSTs to the one endpoint.
+        // Phone must be digits only (country code + number, no '+'). Media uploads use
+        // a media-library fileId we don't have here, so a mediaUrl is sent as a link
+        // appended to the message text.
+        String message = String.isBlank(body) ? '' : body;
         if (String.isNotBlank(mediaUrl)) {
-            payload.put('mediaUrl', mediaUrl);
+            message = String.isBlank(message) ? mediaUrl : message + '\n' + mediaUrl;
+        }
+        Map<String, Object> payload = new Map<String, Object>{
+            'action' => 'send-message',
+            'phone' => digits(toNumber),
+            'message' => message
+        };
+        // The account can hold several WhatsApp sessions; when the channel pins a
+        // heydoot session id, send from that specific number.
+        if (String.isNotBlank(channelId)) {
+            payload.put('sessionId', channelId);
         }
         req.setBody(JSON.serialize(payload));
 
