@@ -106,6 +106,15 @@ public with sharing class MaxDootHeydootClient {
 
     /** Fetch the session status for a channel: Connected | Disconnected | NeedsScan. */
     public static String getStatus(String bearerToken, String channelId) {
+        return getStatus(bearerToken, channelId, null);
+    }
+
+    /**
+     * Fetch the session status for a channel. heydoot returns all sessions on the
+     * account under "sessions"; we pick this channel's own session by its heydoot
+     * session id (preferred) or its WhatsApp number, and normalize that one's status.
+     */
+    public static String getStatus(String bearerToken, String channelId, String whatsAppNumber) {
         MaxDoot_Config__mdt cfg = MaxDootConfig.get();
         HttpRequest req = baseRequest('GET', resolve(cfg.Status_Path__c, channelId), bearerToken);
         HttpResponse res = new Http().send(req);
@@ -114,6 +123,27 @@ public with sharing class MaxDootHeydootClient {
         }
         try {
             Map<String, Object> m = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
+            // Multi-session shape: {"ok":true,"sessions":[{"id","phone","status"}, ...]}
+            if (m.get('sessions') instanceof List<Object>) {
+                String wantDigits = digits(whatsAppNumber);
+                String fallback = null;
+                for (Object o : (List<Object>) m.get('sessions')) {
+                    if (!(o instanceof Map<String, Object>)) continue;
+                    Map<String, Object> se = (Map<String, Object>) o;
+                    String id = String.valueOf(se.get('id'));
+                    String phone = digits(String.valueOf(se.get('phone')));
+                    String st = se.get('status') == null ? null : String.valueOf(se.get('status'));
+                    if (String.isNotBlank(channelId) && channelId.equals(id)) {
+                        return normalizeStatus(st); // exact session match wins
+                    }
+                    if (String.isNotBlank(wantDigits) && wantDigits.equals(phone) && fallback == null) {
+                        fallback = st;
+                    }
+                }
+                if (fallback != null) return normalizeStatus(fallback);
+                return 'Disconnected'; // our session isn't in the account's list
+            }
+            // Single-status shape (kept for resilience / tests).
             Object s = m.containsKey('status') ? m.get('status') : m.get('state');
             return normalizeStatus(s == null ? null : String.valueOf(s));
         } catch (Exception e) {

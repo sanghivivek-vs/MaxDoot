@@ -34,7 +34,7 @@ public with sharing class MaxDootChannelController {
         Channel__c ch = loadChannel(channelId);
         String status;
         try {
-            status = MaxDootHeydootClient.getStatus(ch.Bearer_Token__c, ch.Heydoot_Channel_Id__c);
+            status = MaxDootHeydootClient.getStatus(ch.Bearer_Token__c, ch.Heydoot_Channel_Id__c, ch.WhatsApp_Number__c);
         } catch (Exception e) {
             throw new AuraHandledException('Could not fetch status: ' + e.getMessage());
         }
@@ -46,7 +46,7 @@ public with sharing class MaxDootChannelController {
 
     private static Channel__c loadChannel(Id channelId) {
         List<Channel__c> chs = [
-            SELECT Id, Heydoot_Channel_Id__c, Bearer_Token__c, Session_Status__c
+            SELECT Id, Heydoot_Channel_Id__c, Bearer_Token__c, Session_Status__c, WhatsApp_Number__c
             FROM Channel__c WHERE Id = :channelId LIMIT 1
         ];
         if (chs.isEmpty()) {
