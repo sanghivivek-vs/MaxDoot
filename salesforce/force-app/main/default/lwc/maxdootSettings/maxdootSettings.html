@@ -1,0 +1,142 @@
+<template>
+    <div class="slds-p-around_medium">
+        <template lwc:if={loading}>
+            <lightning-spinner alternative-text="Loading"></lightning-spinner>
+        </template>
+
+        <lightning-tabset variant="scoped">
+            <!-- Inbound webhook -->
+            <lightning-tab label="Inbound Webhook">
+                <div class="slds-p-around_small">
+                    <p class="slds-text-body_small slds-m-bottom_small slds-text-color_weak">
+                        Configure heydoot to POST incoming messages to this URL with the token header
+                        <code>X-MaxDoot-Token</code>.
+                    </p>
+                    <template lwc:if={hasWebhookUrl}>
+                        <div class="slds-form-element slds-m-bottom_small">
+                            <label class="slds-form-element__label">Webhook URL</label>
+                            <div class="slds-grid slds-gutters_x-small">
+                                <div class="slds-col slds-grow">
+                                    <input type="text" readonly value={s.webhookUrl} class="slds-input" />
+                                </div>
+                                <lightning-button label="Copy" data-value={s.webhookUrl}
+                                    onclick={copy}></lightning-button>
+                            </div>
+                        </div>
+                    </template>
+                    <template lwc:if={hasWebhookUrl} lwc:false>
+                        <div class="slds-text-color_weak slds-m-bottom_small">
+                            No public Site found. Deploy the MaxDoot Inbound Site to expose a webhook URL.
+                        </div>
+                    </template>
+
+                    <div class="slds-form-element slds-m-bottom_small">
+                        <label class="slds-form-element__label">Shared token (X-MaxDoot-Token)</label>
+                        <div class="slds-grid slds-gutters_x-small">
+                            <div class="slds-col slds-grow">
+                                <input type="text" readonly value={s.inboundToken} class="slds-input" />
+                            </div>
+                            <lightning-button label="Copy" data-value={s.inboundToken}
+                                onclick={copy}></lightning-button>
+                            <lightning-button label="Regenerate" variant="destructive-text"
+                                class="slds-m-left_x-small" onclick={handleRegenerate}></lightning-button>
+                        </div>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                            Regenerating invalidates the old token — update heydoot afterwards.
+                        </p>
+                    </div>
+                </div>
+            </lightning-tab>
+
+            <!-- Channels -->
+            <lightning-tab label="Channels">
+                <div class="slds-p-around_small">
+                    <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                        <h3 class="slds-text-heading_small">WhatsApp channels</h3>
+                        <lightning-button label="New Channel" icon-name="utility:add"
+                            onclick={handleNewChannel}></lightning-button>
+                    </div>
+
+                    <template for:each={channels} for:item="c">
+                        <div key={c.id} class="slds-box slds-box_x-small slds-m-bottom_x-small">
+                            <div class="slds-grid slds-grid_vertical-align-center slds-gutters_x-small">
+                                <div class="slds-col slds-grow">
+                                    <strong>{c.name}</strong>
+                                    <span class="slds-m-left_x-small slds-text-color_weak">{c.whatsAppNumber}</span>
+                                    <span class={c.statusClass} style="margin-left:.5rem">{c.statusLabel}</span>
+                                </div>
+                                <lightning-button label="Refresh" data-id={c.id}
+                                    onclick={handleRefreshStatus}></lightning-button>
+                                <lightning-button label="Edit" data-id={c.id} class="slds-m-left_x-small"
+                                    onclick={handleEditChannel}></lightning-button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Channel add/edit form -->
+                    <template lwc:if={channelForm}>
+                        <div class="slds-box slds-m-top_small slds-theme_shade">
+                            <h3 class="slds-text-heading_small slds-m-bottom_small">
+                                <template lwc:if={isEditing}>Edit channel</template>
+                                <template lwc:if={isEditing} lwc:false>New channel</template>
+                            </h3>
+                            <lightning-input label="Name" name="name" value={channelForm.name}
+                                onchange={handleFormField}></lightning-input>
+                            <lightning-input label="WhatsApp number (digits)" name="whatsAppNumber"
+                                value={channelForm.whatsAppNumber} onchange={handleFormField}></lightning-input>
+                            <lightning-input label="heydoot session id" name="heydootSessionId"
+                                value={channelForm.heydootSessionId} onchange={handleFormField}></lightning-input>
+                            <lightning-combobox label="Scope" name="scope" value={channelForm.scope}
+                                options={scopeOptions} onchange={handleFormField}></lightning-combobox>
+                            <lightning-input type="password" label="Bearer token (leave blank to keep)"
+                                name="bearerToken" value={channelForm.bearerToken}
+                                onchange={handleFormField}></lightning-input>
+                            <lightning-input type="checkbox" label="Active" name="active"
+                                checked={channelForm.active} onchange={handleFormField}></lightning-input>
+                            <div class="slds-m-top_small">
+                                <lightning-button variant="brand" label="Save"
+                                    onclick={handleSaveChannel}></lightning-button>
+                                <lightning-button label="Cancel" class="slds-m-left_x-small"
+                                    onclick={handleCancelForm}></lightning-button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </lightning-tab>
+
+            <!-- Connection -->
+            <lightning-tab label="Connection">
+                <div class="slds-p-around_small">
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                        heydoot base URL is the <code>heydoot</code> Named Credential (Setup). Paths below are
+                        appended to it.
+                    </p>
+                    <lightning-input label="Send path" name="sendPath" value={s.sendPath}
+                        onchange={handleField}></lightning-input>
+                    <lightning-input label="Status path" name="statusPath" value={s.statusPath}
+                        onchange={handleField}></lightning-input>
+                    <lightning-button variant="brand" label="Save" class="slds-m-top_small"
+                        onclick={handleSaveConnection}></lightning-button>
+                </div>
+            </lightning-tab>
+
+            <!-- Branding -->
+            <lightning-tab label="Branding">
+                <div class="slds-p-around_small">
+                    <lightning-input label="Company name" name="companyName" value={s.companyName}
+                        onchange={handleField}></lightning-input>
+                    <lightning-input label="Tagline" name="tagline" value={s.tagline}
+                        onchange={handleField}></lightning-input>
+                    <lightning-input label="Support email" name="supportEmail" value={s.supportEmail}
+                        onchange={handleField}></lightning-input>
+                    <lightning-input label="Support phone" name="supportPhone" value={s.supportPhone}
+                        onchange={handleField}></lightning-input>
+                    <lightning-input label="Support URL" name="supportUrl" value={s.supportUrl}
+                        onchange={handleField}></lightning-input>
+                    <lightning-button variant="brand" label="Save" class="slds-m-top_small"
+                        onclick={handleSaveBranding}></lightning-button>
+                </div>
+            </lightning-tab>
+        </lightning-tabset>
+    </div>
+</template>

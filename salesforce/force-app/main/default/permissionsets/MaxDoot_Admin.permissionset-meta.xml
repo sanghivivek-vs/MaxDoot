@@ -89,9 +89,17 @@
         <apexClass>MaxDootInboundResource</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>MaxDootSettingsController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
 
     <tabSettings>
         <tab>MaxDoot_Console</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>MaxDoot_Settings</tab>
         <visibility>Visible</visibility>
     </tabSettings>
     <tabSettings>
