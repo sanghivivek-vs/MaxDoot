@@ -102,6 +102,41 @@ private class MaxDootTest {
     }
 
     @isTest
+    static void inboundWebhook_createsGroupConversation() {
+        MaxDootConfig.testOverride = cfg();
+        makeChannel();
+
+        RestRequest req = new RestRequest();
+        req.requestURI = '/services/apexrest/maxdoot/inbound';
+        req.httpMethod = 'POST';
+        req.headers.put('X-MaxDoot-Token', 'secret');
+        req.requestBody = Blob.valueOf(JSON.serialize(new Map<String, Object>{
+            'type' => 'message',
+            'channelId' => 'chan-1',
+            'chatId' => '120363001122334455@g.us',
+            'groupName' => 'Project Team',
+            'author' => '+19311592330',
+            'senderName' => 'Vineet',
+            'to' => '+10000000000',
+            'messageId' => 'grp-1',
+            'body' => 'team update',
+            'timestamp' => '2026-06-03T10:00:00Z'
+        }));
+        RestContext.request = req;
+        RestContext.response = new RestResponse();
+
+        Test.startTest();
+        MaxDootInboundResource.doPost();
+        Test.stopTest();
+
+        Conversation__c cv = [SELECT Is_Group__c, Group_Name__c FROM Conversation__c LIMIT 1];
+        System.assertEquals(true, cv.Is_Group__c, 'group flag set');
+        System.assertEquals('Project Team', cv.Group_Name__c);
+        Message__c msg = [SELECT Sender_Name__c, Sender_Number__c FROM Message__c WHERE Direction__c = 'Inbound' LIMIT 1];
+        System.assertEquals('Vineet', msg.Sender_Name__c, 'group message carries the sender');
+    }
+
+    @isTest
     static void inboundWebhook_rejectsBadToken() {
         MaxDootConfig.testOverride = cfg();
         RestRequest req = new RestRequest();

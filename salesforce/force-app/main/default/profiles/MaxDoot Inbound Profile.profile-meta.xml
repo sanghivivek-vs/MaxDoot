@@ -38,6 +38,21 @@
         <editable>true</editable>
     </fieldPermissions>
     <fieldPermissions>
+        <field>MaxDoot_Inbound__e.Group_Id__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>MaxDoot_Inbound__e.Group_Name__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>MaxDoot_Inbound__e.Sender_Name__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
         <field>MaxDoot_Inbound__e.Media_URL__c</field>
         <readable>true</readable>
         <editable>true</editable>

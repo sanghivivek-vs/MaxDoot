@@ -71,17 +71,39 @@ global without sharing class MaxDootInboundResource {
     private static MaxDoot_Inbound__e toEvent(Map<String, Object> m) {
         String type = str(m, 'type');
         if (String.isBlank(type)) type = 'message';
+
+        // Group detection: an explicit groupId, or a WhatsApp group chat id ("...@g.us").
+        String chatId = firstNonBlank(str(m, 'chatId'), str(m, 'chat_id'));
+        String groupId = firstNonBlank(str(m, 'groupId'), str(m, 'group_id'));
+        if (String.isBlank(groupId) && chatId != null && chatId.endsWith('@g.us')) {
+            groupId = chatId.replace('@g.us', '');
+        }
+        Boolean isGroup = String.isNotBlank(groupId);
+
+        // For group messages the real author is in author/participant/senderNumber;
+        // "from" may carry the group id, so prefer the explicit sender for groups.
+        String sender = firstNonBlank(str(m, 'author'),
+                        firstNonBlank(str(m, 'participant'), str(m, 'senderNumber')));
+        String fromNumber = isGroup
+            ? firstNonBlank(sender, firstNonBlank(str(m, 'from'), str(m, 'fromNumber')))
+            : firstNonBlank(str(m, 'from'), str(m, 'fromNumber'));
+
         return new MaxDoot_Inbound__e(
             Event_Type__c = type,
             Channel_Id__c = str(m, 'channelId'),
-            From_Number__c = firstNonBlank(str(m, 'from'), str(m, 'fromNumber')),
+            From_Number__c = fromNumber,
             To_Number__c = firstNonBlank(str(m, 'to'), str(m, 'toNumber')),
             Direction__c = firstNonBlank(str(m, 'direction'), 'Inbound'),
             Message_Id__c = firstNonBlank(str(m, 'messageId'), str(m, 'id')),
             Body__c = firstNonBlank(str(m, 'body'), str(m, 'text')),
             Media_URL__c = firstNonBlank(str(m, 'mediaUrl'), str(m, 'media_url')),
             Msg_Status__c = str(m, 'status'),
-            Timestamp_Iso__c = firstNonBlank(str(m, 'timestamp'), str(m, 'ts'))
+            Timestamp_Iso__c = firstNonBlank(str(m, 'timestamp'), str(m, 'ts')),
+            Group_Id__c = groupId,
+            Group_Name__c = firstNonBlank(str(m, 'groupName'),
+                            firstNonBlank(str(m, 'group_name'), str(m, 'chatName'))),
+            Sender_Name__c = firstNonBlank(str(m, 'senderName'),
+                            firstNonBlank(str(m, 'authorName'), str(m, 'pushName')))
         );
     }
 

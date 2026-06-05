@@ -49,6 +49,7 @@ export default class MaxdootInbox extends LightningElement {
 
     decorate(c) {
         const name =
+            (c.Is_Group__c && (c.Group_Name__c || 'Group chat')) ||
             (c.Contact__r && c.Contact__r.Name) ||
             (c.Lead__r && c.Lead__r.Name) ||
             c.Customer_Number__c ||

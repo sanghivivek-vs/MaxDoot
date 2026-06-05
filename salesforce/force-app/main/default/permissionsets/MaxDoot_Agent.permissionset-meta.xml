@@ -129,6 +129,26 @@
         <editable>true</editable>
     </fieldPermissions>
     <fieldPermissions>
+        <field>Message__c.Sender_Name__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>Message__c.Sender_Number__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>Conversation__c.Is_Group__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <field>Conversation__c.Group_Name__c</field>
+        <readable>true</readable>
+        <editable>true</editable>
+    </fieldPermissions>
+    <fieldPermissions>
         <field>Message__c.Media_URL__c</field>
         <readable>true</readable>
         <editable>true</editable>

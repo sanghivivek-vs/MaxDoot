@@ -12,7 +12,8 @@ public with sharing class MaxDootSendController {
             SELECT Id, Name, Customer_Number__c, Status__c, Unread_Count__c,
                    Last_Message_Preview__c, Last_Inbound__c, Window_Expires__c,
                    Contact__c, Contact__r.Name, Lead__c, Lead__r.Name,
-                   Channel__c, Channel__r.Name, Owner_Agent__c, Owner_Agent__r.Name
+                   Channel__c, Channel__r.Name, Owner_Agent__c, Owner_Agent__r.Name,
+                   Is_Group__c, Group_Name__c
             FROM Conversation__c
             WHERE Status__c = :status
             ORDER BY Last_Inbound__c DESC NULLS LAST
@@ -23,7 +24,8 @@ public with sharing class MaxDootSendController {
     @AuraEnabled(cacheable=true)
     public static List<Message__c> getMessages(Id conversationId) {
         return [
-            SELECT Id, Direction__c, Body__c, Media_URL__c, Status__c, Timestamp__c, CreatedDate
+            SELECT Id, Direction__c, Body__c, Media_URL__c, Status__c, Timestamp__c, CreatedDate,
+                   Sender_Name__c, Sender_Number__c
             FROM Message__c
             WHERE Conversation__c = :conversationId
             ORDER BY CreatedDate ASC

@@ -7,6 +7,9 @@
             <template for:each={messages} for:item="m">
                 <div key={m.Id} class={m.rowClass}>
                     <div class={m.bubbleClass}>
+                        <template lwc:if={m.senderLabel}>
+                            <div class="maxdoot-sender slds-text-body_small slds-text-color_weak">{m.senderLabel}</div>
+                        </template>
                         <template lwc:if={m.Media_URL__c}>
                             <a href={m.Media_URL__c} target="_blank">📎 attachment</a>
                         </template>

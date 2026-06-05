@@ -65,6 +65,7 @@ export default class MaxdootConversation extends LightningElement {
         return {
             ...m,
             isOutbound: outbound,
+            senderLabel: !outbound && m.Sender_Name__c ? m.Sender_Name__c : null,
             rowClass: 'slds-grid ' + (outbound ? 'slds-grid_align-end' : 'slds-grid_align-start'),
             bubbleClass:
                 'maxdoot-bubble ' + (outbound ? 'maxdoot-bubble-out' : 'maxdoot-bubble-in'),

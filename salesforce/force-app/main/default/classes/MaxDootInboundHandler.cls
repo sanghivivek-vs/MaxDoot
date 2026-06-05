@@ -87,7 +87,7 @@ public without sharing class MaxDootInboundHandler {
             numbers.add(e.From_Number__c);
             Channel__c ch = resolveChannel(e, channelByHeydootId, channelByNumber);
             channelForEvent.put(e, ch);
-            convKeys.add(convKey(channelKeyOf(e), e.From_Number__c));
+            convKeys.add(convKey(channelKeyOf(e), peerKey(e)));
         }
         if (fresh.isEmpty()) return;
 
@@ -105,7 +105,7 @@ public without sharing class MaxDootInboundHandler {
         // 4. Build/refresh conversations.
         Map<String, MaxDoot_Inbound__e> latestByKey = new Map<String, MaxDoot_Inbound__e>();
         for (MaxDoot_Inbound__e e : fresh) {
-            latestByKey.put(convKey(channelKeyOf(e), e.From_Number__c), e);
+            latestByKey.put(convKey(channelKeyOf(e), peerKey(e)), e);
         }
 
         List<Conversation__c> toUpsert = new List<Conversation__c>();
@@ -124,11 +124,19 @@ public without sharing class MaxDootInboundHandler {
                     cv.Channel__c = ch.Id;
                     cv.Owner_Agent__c = MaxDootRouting.resolveOwner(ch);
                 }
-                MaxDootRouting.Match mt = matches.get(e.From_Number__c);
-                if (mt != null) {
-                    cv.Contact__c = mt.contactId;
-                    cv.Lead__c = mt.leadId;
+                if (String.isNotBlank(e.Group_Id__c)) {
+                    cv.Is_Group__c = true;
+                    cv.Group_Name__c = e.Group_Name__c;
+                    cv.Customer_Number__c = null; // a group is not a single number
+                } else {
+                    MaxDootRouting.Match mt = matches.get(e.From_Number__c);
+                    if (mt != null) {
+                        cv.Contact__c = mt.contactId;
+                        cv.Lead__c = mt.leadId;
+                    }
                 }
+            } else if (String.isNotBlank(e.Group_Id__c) && String.isNotBlank(e.Group_Name__c)) {
+                cv.Group_Name__c = e.Group_Name__c; // keep group name fresh
             }
             cv.Last_Inbound__c = System.now();
             cv.Window_Expires__c = System.now().addHours(24);
@@ -149,7 +157,7 @@ public without sharing class MaxDootInboundHandler {
         // 6. Create messages.
         List<Message__c> toInsert = new List<Message__c>();
         for (MaxDoot_Inbound__e e : fresh) {
-            Id convId = convIdByKey.get(convKey(channelKeyOf(e), e.From_Number__c));
+            Id convId = convIdByKey.get(convKey(channelKeyOf(e), peerKey(e)));
             if (convId == null) continue;
             toInsert.add(new Message__c(
                 Conversation__c = convId,
@@ -158,7 +166,9 @@ public without sharing class MaxDootInboundHandler {
                 Media_URL__c = String.isBlank(e.Media_URL__c) ? null : e.Media_URL__c,
                 Heydoot_Message_Id__c = e.Message_Id__c,
                 Status__c = 'Delivered',
-                Timestamp__c = parseTs(e.Timestamp_Iso__c)
+                Timestamp__c = parseTs(e.Timestamp_Iso__c),
+                Sender_Number__c = String.isNotBlank(e.Group_Id__c) ? e.From_Number__c : null,
+                Sender_Name__c = e.Sender_Name__c
             ));
         }
         if (!toInsert.isEmpty()) {
@@ -171,7 +181,7 @@ public without sharing class MaxDootInboundHandler {
     private static Integer countFor(List<MaxDoot_Inbound__e> events, String key) {
         Integer n = 0;
         for (MaxDoot_Inbound__e e : events) {
-            if (convKey(channelKeyOf(e), e.From_Number__c) == key) n++;
+            if (convKey(channelKeyOf(e), peerKey(e)) == key) n++;
         }
         return n;
     }
@@ -179,6 +189,13 @@ public without sharing class MaxDootInboundHandler {
     @TestVisible
     private static String convKey(String channelId, String phone) {
         return (channelId == null ? '' : channelId) + ':' + (phone == null ? '' : phone);
+    }
+
+    /** The conversation peer within a channel: the group (if any), else the customer number. */
+    @TestVisible
+    private static String peerKey(MaxDoot_Inbound__e e) {
+        return String.isNotBlank(e.Group_Id__c) ? 'g:' + e.Group_Id__c
+             : (e.From_Number__c == null ? '' : e.From_Number__c);
     }
 
     /** Stable per-event channel discriminator: heydoot channel id if present, else our number. */
