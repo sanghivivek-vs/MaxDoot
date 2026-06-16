@@ -382,4 +382,39 @@ private class MaxDootTest {
         Map<String, MaxDootRouting.Match> m = MaxDootRouting.matchNumbers(new Set<String>{ '14155552671' });
         System.assertEquals(c.Id, m.get('14155552671').contactId);
     }
+
+    @isTest
+    static void crypto_encryptsAtRestAndRoundTrips() {
+        MaxDootConfig.testOverride = cfg();
+
+        String plain = 'Student fee receipt 12345';
+        String enc = MaxDootCrypto.encrypt(plain);
+        System.assert(enc.startsWith('ENC1:'), 'value is marked ciphertext');
+        System.assertNotEquals(plain, enc, 'not stored as plaintext');
+        System.assertEquals(plain, MaxDootCrypto.decrypt(enc), 'round-trips for authorized read');
+
+        // Legacy plaintext (no marker) and empties pass through untouched.
+        System.assertEquals('legacy', MaxDootCrypto.decrypt('legacy'));
+        System.assertEquals(null, MaxDootCrypto.encrypt(null));
+        System.assertEquals('', MaxDootCrypto.encrypt(''));
+
+        // A long preview still fits the 255-char field after encryption.
+        String encPrev = MaxDootCrypto.encryptForField('x'.repeat(300), 255);
+        System.assert(encPrev.length() <= 255, 'preview ciphertext fits the field');
+        System.assert(MaxDootCrypto.decrypt(encPrev).length() > 0, 'preview round-trips');
+
+        // At rest in the DB the body is ciphertext; getMessages returns plaintext.
+        Channel__c ch = makeChannel();
+        Conversation__c conv = new Conversation__c(
+            External_Key__c = 'enc:+1', Customer_Number__c = '+1',
+            Channel__c = ch.Id, Status__c = 'Open');
+        insert conv;
+        insert new Message__c(Conversation__c = conv.Id, Direction__c = 'Outbound',
+            Body__c = MaxDootCrypto.encrypt('top secret'));
+
+        Message__c raw = [SELECT Body__c FROM Message__c WHERE Conversation__c = :conv.Id LIMIT 1];
+        System.assert(raw.Body__c.startsWith('ENC1:'), 'message body is encrypted at rest');
+        System.assertEquals('top secret',
+            MaxDootSendController.getMessages(conv.Id)[0].Body__c, 'decrypted on read');
+    }
 }

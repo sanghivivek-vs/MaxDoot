@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>Hierarchy</customSettingsType>
+    <description>Holds the AES-256 key used to encrypt MaxDoot message content at rest. Protected: hidden from the Setup UI; readable only by Apex. Populate the org-default Key__c once via script; never commit the key.</description>
+    <enableFeeds>false</enableFeeds>
+    <label>MaxDoot Crypto</label>
+    <visibility>Protected</visibility>
+</CustomObject>

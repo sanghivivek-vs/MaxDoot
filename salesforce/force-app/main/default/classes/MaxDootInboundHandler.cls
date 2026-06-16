@@ -147,7 +147,7 @@ public without sharing class MaxDootInboundHandler {
             }
             cv.Last_Inbound__c = System.now();
             cv.Window_Expires__c = System.now().addHours(24);
-            cv.Last_Message_Preview__c = preview(e.Body__c, e.Media_URL__c);
+            cv.Last_Message_Preview__c = MaxDootCrypto.encryptForField(preview(e.Body__c, e.Media_URL__c), 255);
             cv.Unread_Count__c = (cv.Unread_Count__c == null ? 0 : cv.Unread_Count__c)
                                  + countFor(fresh, key);
             if (cv.Status__c == 'Closed') cv.Status__c = 'Open';
@@ -169,7 +169,7 @@ public without sharing class MaxDootInboundHandler {
             toInsert.add(new Message__c(
                 Conversation__c = convId,
                 Direction__c = 'Inbound',
-                Body__c = e.Body__c,
+                Body__c = MaxDootCrypto.encrypt(e.Body__c),
                 Media_URL__c = String.isBlank(e.Media_URL__c) ? null : e.Media_URL__c,
                 Heydoot_Message_Id__c = e.Message_Id__c,
                 Status__c = 'Delivered',

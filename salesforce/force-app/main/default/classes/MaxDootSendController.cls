@@ -30,12 +30,17 @@ public with sharing class MaxDootSendController {
             'Is_Group__c, Group_Name__c ' +
             'FROM Conversation__c WHERE ' + filter +
             ' ORDER BY Last_Inbound__c DESC NULLS LAST LIMIT 200';
-        return Database.query(soql);
+        List<Conversation__c> rows = Database.query(soql);
+        // The preview snippet is stored encrypted; decrypt for the inbox list.
+        for (Conversation__c c : rows) {
+            c.Last_Message_Preview__c = MaxDootCrypto.decrypt(c.Last_Message_Preview__c);
+        }
+        return rows;
     }
 
     @AuraEnabled(cacheable=true)
     public static List<Message__c> getMessages(Id conversationId) {
-        return [
+        List<Message__c> msgs = [
             SELECT Id, Direction__c, Body__c, Media_URL__c, Status__c, Timestamp__c, CreatedDate,
                    Sender_Name__c, Sender_Number__c
             FROM Message__c
@@ -43,6 +48,11 @@ public with sharing class MaxDootSendController {
             ORDER BY CreatedDate ASC
             LIMIT 1000
         ];
+        // Bodies are stored encrypted at rest; decrypt in-memory for the authorized agent.
+        for (Message__c m : msgs) {
+            m.Body__c = MaxDootCrypto.decrypt(m.Body__c);
+        }
+        return msgs;
     }
 
     @AuraEnabled
@@ -76,7 +86,7 @@ public with sharing class MaxDootSendController {
         Message__c msg = new Message__c(
             Conversation__c = conversationId,
             Direction__c = 'Outbound',
-            Body__c = body,
+            Body__c = MaxDootCrypto.encrypt(body),
             Media_URL__c = String.isBlank(mediaUrl) ? null : mediaUrl,
             Heydoot_Message_Id__c = result == null ? null : result.messageId,
             Status__c = (result != null && String.isNotBlank(result.status)) ? mapStatus(result.status) : 'Sent',
@@ -86,8 +96,8 @@ public with sharing class MaxDootSendController {
 
         Conversation__c convUpdate = new Conversation__c(
             Id = conversationId,
-            Last_Message_Preview__c = String.isNotBlank(body)
-                ? (body.length() > 255 ? body.substring(0, 255) : body) : '[media]'
+            Last_Message_Preview__c = MaxDootCrypto.encryptForField(
+                String.isNotBlank(body) ? body : '[media]', 255)
         );
         // Claim-on-reply: the first agent to reply to an unassigned (queue-owned) thread
         // takes ownership, so the customer's replies route back to that agent.
@@ -191,14 +201,14 @@ public with sharing class MaxDootSendController {
         }
 
         // 2. Now persist the conversation + the outbound message.
-        conv.Last_Message_Preview__c = String.isNotBlank(body)
-            ? (body.length() > 255 ? body.substring(0, 255) : body) : '[media]';
+        conv.Last_Message_Preview__c = MaxDootCrypto.encryptForField(
+            String.isNotBlank(body) ? body : '[media]', 255);
         upsert conv;
 
         insert new Message__c(
             Conversation__c = conv.Id,
             Direction__c = 'Outbound',
-            Body__c = body,
+            Body__c = MaxDootCrypto.encrypt(body),
             Media_URL__c = String.isBlank(mediaUrl) ? null : mediaUrl,
             Heydoot_Message_Id__c = result == null ? null : result.messageId,
             Status__c = (result != null && String.isNotBlank(result.status)) ? mapStatus(result.status) : 'Sent',
