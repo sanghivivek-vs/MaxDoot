@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MaxDoot · Conversation Panel Prototype</title>
+<style>
+  :root{
+    --sf-blue:#0176d3; --bg:#eef1f5; --card:#fff; --border:#e5e5e5; --border2:#dddbda;
+    --text:#181818; --muted:#5c5c5c; --wa:#25d366; --wa-bubble:#d9fdd3; --in-bubble:#fff;
+    --shadow:0 2px 8px rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box;font-family:'Salesforce Sans','Segoe UI',Helvetica,Arial,sans-serif;}
+  body{margin:0;background:var(--bg);padding:24px;display:flex;justify-content:center;}
+  .note{position:fixed;top:10px;left:12px;font-size:11px;color:#8a8f96;}
+  .frame{width:440px;display:flex;flex-direction:column;gap:16px;}
+  .card{background:var(--card);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;}
+
+  /* header */
+  .conv-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#fafcff,#fff);}
+  .avatar{width:42px;height:42px;border-radius:50%;background:#0b5cab;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:0 0 auto;}
+  .who{flex:1;min-width:0;} .who h3{margin:0;font-size:15px;font-weight:700;}
+  .who .sub{font-size:12px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:8px;}
+  .wa-badge{display:inline-flex;align-items:center;gap:4px;background:#e7f9ee;color:#0a7c3e;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;}
+  .wa-dot{width:8px;height:8px;border-radius:50%;background:var(--wa);}
+  .win{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .timer{font-size:11px;font-weight:600;color:#0a7c3e;background:#e7f9ee;padding:3px 9px;border-radius:20px;}
+  .timer.warn{color:#8a5340;background:#fdf1e6;}
+  .icbtn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border2);background:#fff;color:var(--sf-blue);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;}
+  .icbtn:hover{background:#f3f8fe;}
+
+  /* thread */
+  .thread{padding:16px;background:#f7f8fa;height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;}
+  .daysep{align-self:center;font-size:11px;color:var(--muted);background:#eef1f4;padding:3px 12px;border-radius:20px;}
+  .row{display:flex;max-width:80%;animation:pop .18s ease;}
+  @keyframes pop{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .row.in{align-self:flex-start;} .row.out{align-self:flex-end;justify-content:flex-end;}
+  .bubble{padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;box-shadow:0 1px 1px rgba(0,0,0,.06);}
+  .in .bubble{background:var(--in-bubble);border:1px solid #eceff2;border-top-left-radius:4px;}
+  .out .bubble{background:var(--wa-bubble);border-top-right-radius:4px;color:#102b12;}
+  .meta{font-size:10.5px;color:#7a7a7a;margin-top:5px;display:flex;gap:4px;justify-content:flex-end;align-items:center;}
+  .tick{color:#34b7f1;font-weight:700;}
+  .tmpl-tag{font-size:10px;font-weight:600;color:#0a7c3e;background:#e7f9ee;border-radius:4px;padding:1px 6px;margin-bottom:4px;display:inline-block;}
+  .typing{font-size:12px;color:#8a8f96;align-self:flex-start;font-style:italic;}
+
+  /* composer */
+  .composer{border-top:1px solid var(--border);background:#fff;padding:10px 12px 12px;position:relative;}
+  .seg{display:flex;gap:6px;margin-bottom:10px;}
+  .seg button{flex:1;border:1px solid var(--border2);background:#fff;color:var(--muted);font-size:12.5px;font-weight:600;padding:7px 0;border-radius:7px;cursor:pointer;}
+  .seg button.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,.35);}
+  .inputwrap{display:flex;align-items:flex-end;gap:8px;background:#f4f6f9;border:1px solid var(--border2);border-radius:12px;padding:8px 10px;}
+  .inputwrap textarea{flex:1;border:none;background:transparent;resize:none;font-size:13.5px;outline:none;color:var(--text);height:38px;line-height:1.4;}
+  .tools{display:flex;gap:2px;}
+  .tools .t{width:28px;height:28px;border:none;background:transparent;color:var(--muted);font-size:16px;cursor:pointer;border-radius:6px;}
+  .tools .t:hover{background:#e9edf2;}
+  .send{width:38px;height:38px;border-radius:50%;background:var(--sf-blue);color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex:0 0 auto;box-shadow:0 2px 5px rgba(1,118,211,.4);}
+  .send:active{transform:scale(.94);}
+  .helper{font-size:11px;color:var(--muted);margin-top:7px;display:flex;justify-content:space-between;align-items:center;}
+  .tmpl-hint{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--sf-blue);font-weight:600;}
+  /* template dropdown */
+  .tmpl-menu{position:absolute;bottom:60px;left:12px;width:300px;background:#fff;border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden;display:none;z-index:5;}
+  .tmpl-menu.open{display:block;}
+  .tmpl-menu .ti{padding:10px 12px;border-bottom:1px solid #f0f0f0;cursor:pointer;}
+  .tmpl-menu .ti:hover{background:#f3f8fe;}
+  .tmpl-menu .ti b{font-size:12.5px;color:#0a7c3e;} .tmpl-menu .ti p{margin:3px 0 0;font-size:11.5px;color:var(--muted);}
+  .sms-banner{font-size:11.5px;color:#8a5340;background:#fdf1e6;border:1px solid #f3d9c4;border-radius:8px;padding:7px 10px;margin-bottom:10px;display:none;}
+  body.mode-sms .sms-banner{display:block;}
+
+  .label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:12px 16px 6px;}
+  .drop{padding:18px;border:1.5px dashed #d5d9de;margin:0 16px 16px;border-radius:10px;text-align:center;font-size:13px;color:var(--muted);}
+</style>
+</head>
+<body>
+  <div class="note">Interactive prototype — type & Send, switch Reply/Template/SMS, try “Quick template”.</div>
+  <div class="frame">
+    <div class="card">
+      <!-- header -->
+      <div class="conv-head">
+        <div class="avatar">AY</div>
+        <div class="who">
+          <h3>Ayaan</h3>
+          <div class="sub"><span class="wa-badge"><span class="wa-dot"></span>WhatsApp</span><span>+91 98881 18376</span></div>
+        </div>
+        <div class="win">
+          <span class="timer" id="timer">⏱ 23:41 left</span>
+          <div style="display:flex;gap:6px;"><div class="icbtn" title="Call">📞</div><div class="icbtn" title="More">⋯</div></div>
+        </div>
+      </div>
+
+      <!-- thread -->
+      <div class="thread" id="thread">
+        <div class="daysep">Today</div>
+        <div class="row in"><div class="bubble">Hi, I wanted to know about the Foundation JEE-NEET Kickstart course fees.<div class="meta">9:02 AM</div></div></div>
+        <div class="row out"><div class="bubble">Hi Ayaan! The Foundation JEE-NEET Kickstart is ₹14,800. I can share a payment link to enrol now. 😊<div class="meta">9:05 AM <span class="tick">✓✓</span></div></div></div>
+        <div class="row in"><div class="bubble">Can I pay in two installments?<div class="meta">9:08 AM</div></div></div>
+        <div class="row out"><div class="bubble"><span class="tmpl-tag">Template · part_payment_functionality_1</span>Absolutely. Here is your secure payment link for the 1st installment. Full payment unlocks complete course access.<div class="meta">9:10 AM <span class="tick">✓✓</span></div></div></div>
+      </div>
+
+      <!-- composer -->
+      <div class="composer">
+        <div class="seg">
+          <button class="active" data-mode="reply">💬 Reply</button>
+          <button data-mode="template">🧩 Template</button>
+          <button data-mode="sms">✉️ SMS</button>
+        </div>
+        <div class="sms-banner">SMS mode — message will be sent over carrier SMS, not WhatsApp.</div>
+        <div class="inputwrap">
+          <div class="tools"><button class="t" title="Attach">📎</button><button class="t" title="Emoji">😊</button></div>
+          <textarea id="msg" placeholder="Type a message…  (within 24h window)"></textarea>
+          <button class="send" id="send" title="Send">➤</button>
+        </div>
+        <div class="helper">
+          <span class="tmpl-hint" id="tmplBtn">⚡ Quick template ▾</span>
+          <span>Sending as <b>Amit Aggarwal · Allen Online</b></span>
+        </div>
+        <div class="tmpl-menu" id="tmplMenu">
+          <div class="ti" data-body="Hi Ayaan, gentle reminder to pay your 2nd installment for Foundation JEE-NEET Kickstart today. Full payment enables complete course access."><b>part_payment_functionality_1</b><p>Installment reminder</p></div>
+          <div class="ti" data-body="Welcome to ALLEN! Your Foundation JEE-NEET Kickstart enrolment is confirmed. Tap below to access your classes."><b>welcome_onboarding_1</b><p>Enrolment confirmation</p></div>
+          <div class="ti" data-body="Your demo class for Foundation JEE-NEET Kickstart is scheduled. Reply YES to confirm your slot."><b>demo_reminder_1</b><p>Demo class reminder</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Files (0)</div>
+      <div class="drop">⬆ Upload files <span style="color:#a0a4a8;">— or drop files</span></div>
+    </div>
+  </div>
+
+<script>
+  const thread=document.getElementById('thread'), msg=document.getElementById('msg'),
+        send=document.getElementById('send'), tmplBtn=document.getElementById('tmplBtn'),
+        tmplMenu=document.getElementById('tmplMenu');
+  let mode='reply', usingTemplate=false;
+
+  function now(){return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}
+  function scrollDown(){thread.scrollTop=thread.scrollHeight;}
+
+  function addOut(text,tmpl){
+    const r=document.createElement('div'); r.className='row out';
+    r.innerHTML=`<div class="bubble">${tmpl?`<span class="tmpl-tag">Template · ${tmpl}</span>`:''}${text}<div class="meta">${now()} <span class="tick">✓</span></div></div>`;
+    thread.appendChild(r); scrollDown();
+    // simulate delivery ticks turning blue
+    const tick=r.querySelector('.tick'); setTimeout(()=>{tick.textContent='✓✓';},700);
+  }
+  function addIn(text){
+    const t=document.createElement('div'); t.className='typing'; t.textContent='Ayaan is typing…';
+    thread.appendChild(t); scrollDown();
+    setTimeout(()=>{
+      t.remove();
+      const r=document.createElement('div'); r.className='row in';
+      r.innerHTML=`<div class="bubble">${text}<div class="meta">${now()}</div></div>`;
+      thread.appendChild(r); scrollDown();
+    },1400);
+  }
+
+  function doSend(){
+    const text=msg.value.trim(); if(!text) return;
+    addOut(text, usingTemplate?'part_payment_functionality_1':null);
+    msg.value=''; usingTemplate=false;
+    // friendly auto-reply demo
+    const replies=['Got it, thank you! 🙏','Okay, sharing the details now.','Perfect, please go ahead.'];
+    if(Math.random()>.35) addIn(replies[Math.floor(Math.random()*replies.length)]);
+  }
+  send.addEventListener('click',doSend);
+  msg.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();}});
+
+  // mode toggle
+  document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); mode=b.dataset.mode;
+    document.body.className = mode==='sms'?'mode-sms':'';
+    msg.placeholder = mode==='sms'?'Type an SMS…' : mode==='template'?'Pick a template below, then edit…':'Type a message…  (within 24h window)';
+    if(mode==='template') tmplMenu.classList.add('open');
+  }));
+
+  // template dropdown
+  tmplBtn.addEventListener('click',()=>tmplMenu.classList.toggle('open'));
+  document.querySelectorAll('.tmpl-menu .ti').forEach(ti=>ti.addEventListener('click',()=>{
+    msg.value=ti.dataset.body; usingTemplate=true; tmplMenu.classList.remove('open'); msg.focus();
+  }));
+  document.addEventListener('click',e=>{ if(!tmplMenu.contains(e.target)&&e.target!==tmplBtn) tmplMenu.classList.remove('open');});
+
+  // countdown timer
+  let secs=23*3600+41*60; const tEl=document.getElementById('timer');
+  setInterval(()=>{secs--; const h=Math.floor(secs/3600),m=Math.floor(secs%3600/60);
+    tEl.textContent=`⏱ ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} left`;
+    tEl.classList.toggle('warn',h<2);},1000);
+
+  scrollDown();
+</script>
+</body>
+</html>
