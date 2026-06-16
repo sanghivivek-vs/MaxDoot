@@ -9,7 +9,7 @@
         <type>AutoNumber</type>
         <displayFormat>WC-{00000000}</displayFormat>
     </nameField>
-    <sharingModel>ReadWrite</sharingModel>
+    <sharingModel>Private</sharingModel>
     <enableActivities>true</enableActivities>
     <enableHistory>false</enableHistory>
     <enableReports>true</enableReports>

@@ -302,21 +302,29 @@ private class MaxDootTest {
             External_Key__c = 'chan-1:+1999', Customer_Number__c = '+1999',
             Channel__c = ch.Id, Status__c = 'Open', Unread_Count__c = 3
         );
-        insert conv;
+        insert conv; // owned by the running user
         insert new Message__c(Conversation__c = conv.Id, Direction__c = 'Inbound', Body__c = 'yo');
 
+        Group q = [SELECT Id FROM Group WHERE Type = 'Queue' AND DeveloperName = 'MaxDoot_Unassigned' LIMIT 1];
+        Id me = UserInfo.getUserId();
+
+        // The running user owns it, so it shows under All and My.
         System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'All').size());
-        System.assertEquals(0, MaxDootSendController.getOpenConversations('Open', 'Mine').size(),
-            'conversation is unassigned, so not in the running user\'s My list');
-        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'Unassigned').size());
+        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'Mine').size());
         System.assertEquals(1, MaxDootSendController.getMessages(conv.Id).size());
         MaxDootSendController.markRead(conv.Id);
         System.assertEquals(0, [SELECT Unread_Count__c FROM Conversation__c WHERE Id = :conv.Id].Unread_Count__c);
-        // Claim then it shows under My.
-        MaxDootSendController.claimConversation(conv.Id);
-        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'Mine').size());
+
+        // Release to the queue: ownership moves off the user (no longer in My).
         MaxDootSendController.releaseConversation(conv.Id);
+        System.assertEquals(q.Id, [SELECT OwnerId FROM Conversation__c WHERE Id = :conv.Id].OwnerId,
+            'released to the unassigned queue');
         System.assertEquals(0, MaxDootSendController.getOpenConversations('Open', 'Mine').size());
+
+        // Claim it back: owner becomes the running user again.
+        MaxDootSendController.claimConversation(conv.Id);
+        System.assertEquals(me, [SELECT OwnerId FROM Conversation__c WHERE Id = :conv.Id].OwnerId, 'claimed');
+        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'Mine').size());
     }
 
     @isTest

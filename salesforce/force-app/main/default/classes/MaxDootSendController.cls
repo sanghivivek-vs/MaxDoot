@@ -11,21 +11,22 @@ public with sharing class MaxDootSendController {
         Id me = UserInfo.getUserId();
         String scope = String.isBlank(ownerScope) ? 'Mine' : ownerScope;
 
+        // The record Owner drives sharing (OWD Private + role hierarchy), so ownership
+        // filtering keys off OwnerId. Unassigned cold inbound is owned by the queue.
         String filter = 'Status__c = :status';
         if (scope == 'Mine') {
-            // A shared number is owned per-conversation: an agent sees the threads
-            // they started or claimed. Unassigned cold inbound shows under 'Unassigned'.
-            filter += ' AND Owner_Agent__c = :me';
+            filter += ' AND OwnerId = :me';
         } else if (scope == 'Unassigned') {
-            filter += ' AND Owner_Agent__c = null';
+            filter += ' AND Owner.Type = \'Queue\'';
         }
-        // 'All' applies no owner filter.
+        // 'All' applies no owner filter; OWD Private already scopes to accessible rows
+        // (own + claimed + subordinates' via role hierarchy for managers).
 
         String soql =
             'SELECT Id, Name, Customer_Number__c, Status__c, Unread_Count__c, ' +
             'Last_Message_Preview__c, Last_Inbound__c, Window_Expires__c, ' +
             'Contact__c, Contact__r.Name, Lead__c, Lead__r.Name, ' +
-            'Channel__c, Channel__r.Name, Owner_Agent__c, Owner_Agent__r.Name, ' +
+            'Channel__c, Channel__r.Name, OwnerId, Owner.Name, Owner_Agent__c, Owner_Agent__r.Name, ' +
             'Is_Group__c, Group_Name__c ' +
             'FROM Conversation__c WHERE ' + filter +
             ' ORDER BY Last_Inbound__c DESC NULLS LAST LIMIT 200';
@@ -50,7 +51,7 @@ public with sharing class MaxDootSendController {
             throw new AuraHandledException('Message is empty.');
         }
         List<Conversation__c> convs = [
-            SELECT Id, Customer_Number__c, Channel__c, Owner_Agent__c,
+            SELECT Id, Customer_Number__c, Channel__c, Owner_Agent__c, Owner.Type,
                    Channel__r.Heydoot_Channel_Id__c, Channel__r.Bearer_Token__c, Channel__r.Active__c
             FROM Conversation__c WHERE Id = :conversationId LIMIT 1
         ];
@@ -88,9 +89,10 @@ public with sharing class MaxDootSendController {
             Last_Message_Preview__c = String.isNotBlank(body)
                 ? (body.length() > 255 ? body.substring(0, 255) : body) : '[media]'
         );
-        // Claim-on-reply: the first agent to reply to an unassigned thread owns it,
-        // so subsequent customer replies route back to that agent on the shared number.
+        // Claim-on-reply: the first agent to reply to an unassigned (queue-owned) thread
+        // takes ownership, so the customer's replies route back to that agent.
         if (conv.Owner_Agent__c == null) {
+            convUpdate.OwnerId = UserInfo.getUserId();
             convUpdate.Owner_Agent__c = UserInfo.getUserId();
         }
         update convUpdate;
@@ -169,8 +171,13 @@ public with sharing class MaxDootSendController {
                     conv.Lead__c = m.leadId;
                 }
             }
+            // Proactive outbound: the initiating agent owns the thread (drives sharing).
             Id owner = MaxDootRouting.resolveOwner(ch);
-            conv.Owner_Agent__c = owner != null ? owner : UserInfo.getUserId();
+            if (owner == null) {
+                owner = UserInfo.getUserId();
+            }
+            conv.OwnerId = owner;
+            conv.Owner_Agent__c = owner;
         }
 
         // 1. Callout first (no DML pending).
@@ -208,13 +215,19 @@ public with sharing class MaxDootSendController {
     /** Assign a conversation to the running user (claim it from the shared/unassigned pool). */
     @AuraEnabled
     public static void claimConversation(Id conversationId) {
-        update new Conversation__c(Id = conversationId, Owner_Agent__c = UserInfo.getUserId());
+        Id me = UserInfo.getUserId();
+        update new Conversation__c(Id = conversationId, OwnerId = me, Owner_Agent__c = me);
     }
 
-    /** Return a conversation to the unassigned pool. */
+    /** Return a conversation to the unassigned queue pool. */
     @AuraEnabled
     public static void releaseConversation(Id conversationId) {
-        update new Conversation__c(Id = conversationId, Owner_Agent__c = null);
+        Conversation__c cv = new Conversation__c(Id = conversationId, Owner_Agent__c = null);
+        List<Group> qs = [SELECT Id FROM Group WHERE Type = 'Queue' AND DeveloperName = 'MaxDoot_Unassigned' LIMIT 1];
+        if (!qs.isEmpty()) {
+            cv.OwnerId = qs[0].Id;
+        }
+        update cv;
     }
 
     private static String digits(String s) {

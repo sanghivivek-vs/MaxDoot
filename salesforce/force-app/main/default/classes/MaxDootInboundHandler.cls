@@ -122,7 +122,14 @@ public without sharing class MaxDootInboundHandler {
                 );
                 if (ch != null) {
                     cv.Channel__c = ch.Id;
-                    cv.Owner_Agent__c = MaxDootRouting.resolveOwner(ch);
+                    Id agent = MaxDootRouting.resolveOwner(ch);
+                    if (agent != null) {
+                        cv.OwnerId = agent;
+                        cv.Owner_Agent__c = agent;
+                    } else if (unassignedQueueId() != null) {
+                        // Cold inbound on a shared number lands in the claimable pool.
+                        cv.OwnerId = unassignedQueueId();
+                    }
                 }
                 if (String.isNotBlank(e.Group_Id__c)) {
                     cv.Is_Group__c = true;
@@ -189,6 +196,19 @@ public without sharing class MaxDootInboundHandler {
     @TestVisible
     private static String convKey(String channelId, String phone) {
         return (channelId == null ? '' : channelId) + ':' + (phone == null ? '' : phone);
+    }
+
+    private static Boolean queueLoaded = false;
+    private static Id queueId;
+    /** Id of the MaxDoot Unassigned queue (owner for claimable cold inbound), or null. */
+    @TestVisible
+    private static Id unassignedQueueId() {
+        if (!queueLoaded) {
+            queueLoaded = true;
+            List<Group> qs = [SELECT Id FROM Group WHERE Type = 'Queue' AND DeveloperName = 'MaxDoot_Unassigned' LIMIT 1];
+            queueId = qs.isEmpty() ? null : qs[0].Id;
+        }
+        return queueId;
     }
 
     /** The conversation peer within a channel: the group (if any), else the customer number. */
