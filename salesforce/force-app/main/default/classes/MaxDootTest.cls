@@ -305,10 +305,18 @@ private class MaxDootTest {
         insert conv;
         insert new Message__c(Conversation__c = conv.Id, Direction__c = 'Inbound', Body__c = 'yo');
 
-        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open').size());
+        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'All').size());
+        System.assertEquals(0, MaxDootSendController.getOpenConversations('Open', 'Mine').size(),
+            'conversation is unassigned, so not in the running user\'s My list');
+        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'Unassigned').size());
         System.assertEquals(1, MaxDootSendController.getMessages(conv.Id).size());
         MaxDootSendController.markRead(conv.Id);
         System.assertEquals(0, [SELECT Unread_Count__c FROM Conversation__c WHERE Id = :conv.Id].Unread_Count__c);
+        // Claim then it shows under My.
+        MaxDootSendController.claimConversation(conv.Id);
+        System.assertEquals(1, MaxDootSendController.getOpenConversations('Open', 'Mine').size());
+        MaxDootSendController.releaseConversation(conv.Id);
+        System.assertEquals(0, MaxDootSendController.getOpenConversations('Open', 'Mine').size());
     }
 
     @isTest

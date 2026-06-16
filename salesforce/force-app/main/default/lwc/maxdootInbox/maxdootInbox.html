@@ -20,6 +20,14 @@
                 </lightning-button>
             </div>
         </div>
+        <div class="slds-m-top_x-small">
+            <lightning-tabset variant="scoped" active-tab-value={ownerScope}>
+                <template for:each={ownerScopes} for:item="sc">
+                    <lightning-tab key={sc.value} label={sc.label} value={sc.value}
+                        onactive={handleScope}></lightning-tab>
+                </template>
+            </lightning-tabset>
+        </div>
     </div>
 
     <template lwc:if={loading}>

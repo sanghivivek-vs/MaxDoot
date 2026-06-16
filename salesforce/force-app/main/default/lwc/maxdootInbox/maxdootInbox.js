@@ -6,15 +6,23 @@ import MaxdootCompose from 'c/maxdootCompose';
 
 const CHANNEL = '/event/MaxDoot_Inbound__e';
 
+const OWNER_SCOPES = [
+    { label: 'My chats', value: 'Mine' },
+    { label: 'Unassigned', value: 'Unassigned' },
+    { label: 'All', value: 'All' }
+];
+
 export default class MaxdootInbox extends LightningElement {
     @track searchTerm = '';
     @track selectedId;
+    @track ownerScope = 'Mine';
+    ownerScopes = OWNER_SCOPES;
     loading = true;
     _wireResult;
     _subscription;
     rows = [];
 
-    @wire(getOpenConversations, { statusFilter: 'Open' })
+    @wire(getOpenConversations, { statusFilter: 'Open', ownerScope: '$ownerScope' })
     wired(result) {
         this._wireResult = result;
         if (result.data) {
@@ -95,6 +103,13 @@ export default class MaxdootInbox extends LightningElement {
 
     handleSearch(event) {
         this.searchTerm = event.target.value || '';
+    }
+
+    handleScope(event) {
+        const value = event.target && event.target.value;
+        if (value && value !== this.ownerScope) {
+            this.ownerScope = value;
+        }
     }
 
     handleClick(event) {

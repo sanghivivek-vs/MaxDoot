@@ -6,19 +6,30 @@
 public with sharing class MaxDootSendController {
 
     @AuraEnabled(cacheable=true)
-    public static List<Conversation__c> getOpenConversations(String statusFilter) {
+    public static List<Conversation__c> getOpenConversations(String statusFilter, String ownerScope) {
         String status = String.isBlank(statusFilter) ? 'Open' : statusFilter;
-        return [
-            SELECT Id, Name, Customer_Number__c, Status__c, Unread_Count__c,
-                   Last_Message_Preview__c, Last_Inbound__c, Window_Expires__c,
-                   Contact__c, Contact__r.Name, Lead__c, Lead__r.Name,
-                   Channel__c, Channel__r.Name, Owner_Agent__c, Owner_Agent__r.Name,
-                   Is_Group__c, Group_Name__c
-            FROM Conversation__c
-            WHERE Status__c = :status
-            ORDER BY Last_Inbound__c DESC NULLS LAST
-            LIMIT 200
-        ];
+        Id me = UserInfo.getUserId();
+        String scope = String.isBlank(ownerScope) ? 'Mine' : ownerScope;
+
+        String filter = 'Status__c = :status';
+        if (scope == 'Mine') {
+            // A shared number is owned per-conversation: an agent sees the threads
+            // they started or claimed. Unassigned cold inbound shows under 'Unassigned'.
+            filter += ' AND Owner_Agent__c = :me';
+        } else if (scope == 'Unassigned') {
+            filter += ' AND Owner_Agent__c = null';
+        }
+        // 'All' applies no owner filter.
+
+        String soql =
+            'SELECT Id, Name, Customer_Number__c, Status__c, Unread_Count__c, ' +
+            'Last_Message_Preview__c, Last_Inbound__c, Window_Expires__c, ' +
+            'Contact__c, Contact__r.Name, Lead__c, Lead__r.Name, ' +
+            'Channel__c, Channel__r.Name, Owner_Agent__c, Owner_Agent__r.Name, ' +
+            'Is_Group__c, Group_Name__c ' +
+            'FROM Conversation__c WHERE ' + filter +
+            ' ORDER BY Last_Inbound__c DESC NULLS LAST LIMIT 200';
+        return Database.query(soql);
     }
 
     @AuraEnabled(cacheable=true)
@@ -39,7 +50,7 @@ public with sharing class MaxDootSendController {
             throw new AuraHandledException('Message is empty.');
         }
         List<Conversation__c> convs = [
-            SELECT Id, Customer_Number__c, Channel__c,
+            SELECT Id, Customer_Number__c, Channel__c, Owner_Agent__c,
                    Channel__r.Heydoot_Channel_Id__c, Channel__r.Bearer_Token__c, Channel__r.Active__c
             FROM Conversation__c WHERE Id = :conversationId LIMIT 1
         ];
@@ -72,11 +83,17 @@ public with sharing class MaxDootSendController {
         );
         insert msg;
 
-        update new Conversation__c(
+        Conversation__c convUpdate = new Conversation__c(
             Id = conversationId,
             Last_Message_Preview__c = String.isNotBlank(body)
                 ? (body.length() > 255 ? body.substring(0, 255) : body) : '[media]'
         );
+        // Claim-on-reply: the first agent to reply to an unassigned thread owns it,
+        // so subsequent customer replies route back to that agent on the shared number.
+        if (conv.Owner_Agent__c == null) {
+            convUpdate.Owner_Agent__c = UserInfo.getUserId();
+        }
+        update convUpdate;
         return msg;
     }
 
@@ -186,6 +203,18 @@ public with sharing class MaxDootSendController {
     @AuraEnabled
     public static void markRead(Id conversationId) {
         update new Conversation__c(Id = conversationId, Unread_Count__c = 0);
+    }
+
+    /** Assign a conversation to the running user (claim it from the shared/unassigned pool). */
+    @AuraEnabled
+    public static void claimConversation(Id conversationId) {
+        update new Conversation__c(Id = conversationId, Owner_Agent__c = UserInfo.getUserId());
+    }
+
+    /** Return a conversation to the unassigned pool. */
+    @AuraEnabled
+    public static void releaseConversation(Id conversationId) {
+        update new Conversation__c(Id = conversationId, Owner_Agent__c = null);
     }
 
     private static String digits(String s) {
