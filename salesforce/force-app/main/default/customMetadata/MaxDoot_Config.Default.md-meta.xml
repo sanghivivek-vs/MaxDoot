@@ -12,15 +12,15 @@
     </values>
     <values>
         <field>Send_Path__c</field>
-        <value xsi:type="xsd:string">/v1/messages</value>
+        <value xsi:type="xsd:string">/api/external</value>
     </values>
     <values>
         <field>QR_Path__c</field>
-        <value xsi:type="xsd:string">/v1/qr</value>
+        <value xsi:type="xsd:string">/api/external?action=qr&amp;sessionId={channelId}</value>
     </values>
     <values>
         <field>Status_Path__c</field>
-        <value xsi:type="xsd:string">/v1/status</value>
+        <value xsi:type="xsd:string">/api/external?action=status</value>
     </values>
     <values>
         <field>Company_Name__c</field>
