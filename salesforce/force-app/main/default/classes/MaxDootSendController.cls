@@ -92,6 +92,53 @@ public with sharing class MaxDootSendController {
         return msgs;
     }
 
+    /**
+     * Upload an attachment, link it to the conversation, and return a public URL.
+     * heydoot delivers media as a link appended to the message, so we expose the file
+     * through a ContentDistribution (public link) and send that URL as the mediaUrl.
+     */
+    @AuraEnabled
+    public static String uploadAttachment(Id conversationId, String fileName, String base64Data) {
+        if (String.isBlank(base64Data)) {
+            throw new AuraHandledException('No file data received.');
+        }
+        String safeName = String.isBlank(fileName) ? 'attachment' : fileName;
+        try {
+            ContentVersion cv = new ContentVersion(
+                Title = safeName,
+                PathOnClient = safeName,
+                VersionData = EncodingUtil.base64Decode(base64Data),
+                FirstPublishLocationId = conversationId   // link the file to the conversation
+            );
+            insert cv;
+            Id contentVersionId = [
+                SELECT Id FROM ContentVersion WHERE Id = :cv.Id LIMIT 1
+            ].Id;
+
+            ContentDistribution cd = new ContentDistribution(
+                Name = safeName,
+                ContentVersionId = contentVersionId,
+                PreferencesAllowViewInBrowser = true,
+                PreferencesAllowOriginalDownload = true,
+                PreferencesLinkLatestVersion = true,
+                PreferencesNotifyOnVisit = false,
+                PreferencesPasswordRequired = false,
+                PreferencesExpires = false
+            );
+            insert cd;
+
+            ContentDistribution saved = [
+                SELECT ContentDownloadUrl, DistributionPublicUrl
+                FROM ContentDistribution WHERE Id = :cd.Id LIMIT 1
+            ];
+            return String.isNotBlank(saved.ContentDownloadUrl)
+                ? saved.ContentDownloadUrl : saved.DistributionPublicUrl;
+        } catch (Exception e) {
+            // Most common cause: "Content Deliveries and Public Links" not enabled in Setup.
+            throw new AuraHandledException('Attachment upload failed: ' + e.getMessage());
+        }
+    }
+
     @AuraEnabled
     public static Message__c sendMessage(Id conversationId, String body, String mediaUrl) {
         if (String.isBlank(body) && String.isBlank(mediaUrl)) {

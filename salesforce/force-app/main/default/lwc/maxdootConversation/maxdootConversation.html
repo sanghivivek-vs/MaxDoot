@@ -34,7 +34,62 @@
                     ⚠️ 24-hour window has elapsed — only template messages may deliver on the Business API.
                 </div>
             </template>
+
+            <!-- pending attachment chip -->
+            <template lwc:if={hasAttachment}>
+                <div class="maxdoot-attach-chip slds-m-bottom_xx-small">
+                    <lightning-icon icon-name="utility:attach" size="xx-small"></lightning-icon>
+                    <span class="maxdoot-attach-name">{pendingFileName}</span>
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        variant="bare"
+                        size="x-small"
+                        alternative-text="Remove attachment"
+                        onclick={removeAttachment}>
+                    </lightning-button-icon>
+                </div>
+            </template>
+
             <div class="slds-grid slds-grid_vertical-align-end">
+                <!-- emoji + attachment controls -->
+                <div class="slds-col slds-p-right_xx-small maxdoot-composer-tools">
+                    <div class="maxdoot-emoji-wrap">
+                        <lightning-button-icon
+                            icon-name="utility:emoji"
+                            variant="bare"
+                            size="medium"
+                            alternative-text="Emoji"
+                            title="Emoji"
+                            onclick={toggleEmoji}>
+                        </lightning-button-icon>
+                        <template lwc:if={showEmoji}>
+                            <div class="maxdoot-emoji-panel">
+                                <template for:each={emojis} for:item="e">
+                                    <button
+                                        key={e}
+                                        type="button"
+                                        class="maxdoot-emoji-btn"
+                                        data-emoji={e}
+                                        onclick={handleEmoji}>{e}</button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <lightning-button-icon
+                        icon-name="utility:attach"
+                        variant="bare"
+                        size="medium"
+                        alternative-text="Attach file"
+                        title="Attach file"
+                        disabled={uploading}
+                        onclick={handleAttachClick}>
+                    </lightning-button-icon>
+                    <template lwc:if={uploading}>
+                        <lightning-spinner alternative-text="Uploading" size="x-small"></lightning-spinner>
+                    </template>
+                    <input type="file" class="slds-hide" onchange={handleFileChange} />
+                </div>
+
                 <div class="slds-col slds-grow">
                     <lightning-textarea
                         variant="label-hidden"

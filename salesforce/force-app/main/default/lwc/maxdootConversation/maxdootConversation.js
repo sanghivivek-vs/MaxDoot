@@ -5,8 +5,16 @@ import { subscribe, unsubscribe } from 'lightning/empApi';
 import getMessages from '@salesforce/apex/MaxDootSendController.getMessages';
 import sendMessage from '@salesforce/apex/MaxDootSendController.sendMessage';
 import markRead from '@salesforce/apex/MaxDootSendController.markRead';
+import uploadAttachment from '@salesforce/apex/MaxDootSendController.uploadAttachment';
 
 const CHANNEL = '/event/MaxDoot_Inbound__e';
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — keeps the base64 payload within Apex request limits
+const EMOJIS = [
+    '😀', '😁', '😂', '🤣', '😊', '😍', '😘', '😎', '🤩', '🥳',
+    '🙂', '😉', '🤔', '😢', '😭', '😡', '😱', '🙏', '👍', '👎',
+    '👏', '🙌', '🤝', '💪', '🔥', '✨', '🎉', '❤️', '💯', '✅',
+    '❌', '⚠️', '📌', '📎', '📞', '💬', '🕒', '💰', '🎓', '🚀'
+];
 
 export default class MaxdootConversation extends LightningElement {
     _conversationId;
@@ -18,6 +26,12 @@ export default class MaxdootConversation extends LightningElement {
     _wireResult;
     _subscription;
 
+    // Composer extras
+    showEmoji = false;
+    uploading = false;
+    pendingMediaUrl = null;
+    pendingFileName = null;
+
     @api
     get conversationId() {
         return this._conversationId;
@@ -25,6 +39,8 @@ export default class MaxdootConversation extends LightningElement {
     set conversationId(value) {
         this._conversationId = value;
         this.draft = '';
+        this.clearAttachment();
+        this.showEmoji = false;
         if (value) {
             this.loading = true;
             markRead({ conversationId: value }).catch(() => {});
@@ -84,34 +100,110 @@ export default class MaxdootConversation extends LightningElement {
     get isEmpty() {
         return !this.loading && this.messages.length === 0;
     }
+    get emojis() {
+        return EMOJIS;
+    }
+    get hasAttachment() {
+        return !!this.pendingMediaUrl;
+    }
     get sendDisabled() {
-        return this.sending || !this.draft || !this.draft.trim();
+        const hasText = this.draft && this.draft.trim();
+        return this.sending || this.uploading || (!hasText && !this.pendingMediaUrl);
     }
 
     handleDraft(event) {
         this.draft = event.target.value;
     }
 
+    // ---- emoji ----------------------------------------------------------------
+    toggleEmoji() {
+        this.showEmoji = !this.showEmoji;
+    }
+
+    handleEmoji(event) {
+        const emoji = event.currentTarget.dataset.emoji;
+        this.draft = (this.draft || '') + emoji;
+        this.showEmoji = false;
+        // return focus to the textarea
+        const ta = this.template.querySelector('lightning-textarea');
+        if (ta) ta.focus();
+    }
+
+    // ---- attachment -----------------------------------------------------------
+    handleAttachClick() {
+        const input = this.template.querySelector('input[type="file"]');
+        if (input) input.click();
+    }
+
+    async handleFileChange(event) {
+        const file = event.target.files && event.target.files[0];
+        // reset so the same file can be re-selected later
+        event.target.value = null;
+        if (!file) return;
+        if (file.size > MAX_FILE_BYTES) {
+            this.toast('File too large', 'Attachments must be 5 MB or smaller.', 'error');
+            return;
+        }
+        this.uploading = true;
+        try {
+            const base64 = await this.readAsBase64(file);
+            const url = await uploadAttachment({
+                conversationId: this._conversationId,
+                fileName: file.name,
+                base64Data: base64
+            });
+            this.pendingMediaUrl = url;
+            this.pendingFileName = file.name;
+        } catch (error) {
+            this.toast('Attachment failed', this.errMsg(error), 'error');
+        } finally {
+            this.uploading = false;
+        }
+    }
+
+    readAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    clearAttachment() {
+        this.pendingMediaUrl = null;
+        this.pendingFileName = null;
+    }
+
+    removeAttachment() {
+        this.clearAttachment();
+    }
+
+    // ---- send -----------------------------------------------------------------
     async handleSend() {
-        const body = this.draft.trim();
-        if (!body) return;
+        const body = (this.draft || '').trim();
+        const mediaUrl = this.pendingMediaUrl;
+        if (!body && !mediaUrl) return;
         this.sending = true;
         try {
-            await sendMessage({ conversationId: this._conversationId, body, mediaUrl: null });
+            await sendMessage({ conversationId: this._conversationId, body, mediaUrl });
             this.draft = '';
+            this.clearAttachment();
             await refreshApex(this._wireResult);
             this.scrollToBottom();
         } catch (error) {
-            this.dispatchEvent(
-                new ShowToastEvent({
-                    title: 'Send failed',
-                    message: (error && error.body && error.body.message) || 'Unknown error',
-                    variant: 'error'
-                })
-            );
+            this.toast('Send failed', this.errMsg(error), 'error');
         } finally {
             this.sending = false;
         }
+    }
+
+    errMsg(error) {
+        return (error && error.body && error.body.message) || 'Unknown error';
+    }
+
+    toast(title, message, variant) {
+        this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
     }
 
     scrollToBottom() {
