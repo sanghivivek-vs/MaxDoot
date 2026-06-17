@@ -230,7 +230,9 @@ public with sharing class MaxDootSendController {
 
         String channelKey = String.isNotBlank(ch.Heydoot_Channel_Id__c)
             ? ch.Heydoot_Channel_Id__c : digits(ch.WhatsApp_Number__c);
-        String externalKey = channelKey + ':' + toNumber;
+        // Canonicalize the number so an inbound reply (heydoot sends digits) threads onto
+        // this same conversation instead of spawning a duplicate keyed with '+91…'.
+        String externalKey = channelKey + ':' + MaxDootRouting.phoneKey(toNumber);
 
         List<Conversation__c> existing = [
             SELECT Id, Status__c FROM Conversation__c WHERE External_Key__c = :externalKey LIMIT 1

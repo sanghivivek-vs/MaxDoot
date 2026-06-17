@@ -239,7 +239,7 @@ public without sharing class MaxDootInboundHandler {
     @TestVisible
     private static String peerKey(MaxDoot_Inbound__e e) {
         return String.isNotBlank(e.Group_Id__c) ? 'g:' + e.Group_Id__c
-             : (e.From_Number__c == null ? '' : e.From_Number__c);
+             : MaxDootRouting.phoneKey(e.From_Number__c);
     }
 
     /** Stable per-event channel discriminator: heydoot channel id if present, else our number. */

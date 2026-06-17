@@ -8,6 +8,6 @@
     <relationshipLabel>Messages</relationshipLabel>
     <relationshipName>Messages</relationshipName>
     <relationshipOrder>0</relationshipOrder>
-    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <reparentableMasterDetail>true</reparentableMasterDetail>
     <writeRequiresMasterRead>false</writeRequiresMasterRead>
 </CustomField>

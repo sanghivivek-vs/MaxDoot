@@ -80,6 +80,16 @@ public with sharing class MaxDootRouting {
         return s == null ? '' : s.replaceAll('[^0-9]', '');
     }
 
+    /**
+     * Canonical conversation key for a phone number: digits only, reduced to the last
+     * 10 digits. This collapses '+91…', spaces, and a present/absent country code to a
+     * single key so inbound replies and outbound sends thread into one conversation.
+     */
+    public static String phoneKey(String s) {
+        String d = digits(s);
+        return d.length() > 10 ? d.substring(d.length() - 10) : d;
+    }
+
     /** True when the shorter of the two is a suffix of the longer (>= 8 digits). */
     private static Boolean suffixEquals(String a, String b) {
         if (String.isBlank(a) || String.isBlank(b)) return false;
