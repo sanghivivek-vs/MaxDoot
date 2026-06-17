@@ -67,7 +67,7 @@ private class MaxDootTest {
         MaxDootConfig.testOverride = cfg();
         makeChannel();
         Conversation__c existing = new Conversation__c(
-            External_Key__c = 'chan-1:+19998887777',
+            External_Key__c = 'chan-1:9998887777', // canonical last-10 digit key
             Customer_Number__c = '+19998887777',
             Status__c = 'Closed', // also verifies reopen
             Unread_Count__c = 0
@@ -252,7 +252,7 @@ private class MaxDootTest {
             SELECT External_Key__c, Customer_Number__c, Channel__c, Status__c, Owner_Agent__c
             FROM Conversation__c WHERE Id = :convId
         ];
-        System.assertEquals('chan-1:+15551234567', conv.External_Key__c, 'keyed like inbound');
+        System.assertEquals('chan-1:5551234567', conv.External_Key__c, 'keyed like inbound (canonical)');
         System.assertEquals(ch.Id, conv.Channel__c);
         System.assertEquals(UserInfo.getUserId(), conv.Owner_Agent__c, 'Org scope falls back to current user');
         System.assertEquals(1, [
@@ -265,7 +265,7 @@ private class MaxDootTest {
         MaxDootConfig.testOverride = cfg();
         Channel__c ch = makeChannel();
         Conversation__c existing = new Conversation__c(
-            External_Key__c = 'chan-1:+15559999999', Customer_Number__c = '+15559999999',
+            External_Key__c = 'chan-1:5559999999', Customer_Number__c = '+15559999999',
             Channel__c = ch.Id, Status__c = 'Closed'
         );
         insert existing;
