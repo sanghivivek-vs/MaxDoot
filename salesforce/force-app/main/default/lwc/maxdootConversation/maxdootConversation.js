@@ -32,6 +32,9 @@ export default class MaxdootConversation extends LightningElement {
     pendingMediaUrl = null;
     pendingFileName = null;
 
+    // Message ids whose media failed to render as an image (fall back to a link).
+    _failedImages = new Set();
+
     @api
     get conversationId() {
         return this._conversationId;
@@ -78,10 +81,17 @@ export default class MaxdootConversation extends LightningElement {
     decorate(m) {
         const outbound = m.Direction__c === 'Outbound';
         const ts = m.Timestamp__c || m.CreatedDate;
+        // Optimistically render any media as an image thumbnail; the <img> onerror
+        // falls back to a plain link for non-images (PDF, docs, etc.). This avoids a
+        // schema change and works for both inbound and uploaded media URLs.
+        const hasMedia = !!m.Media_URL__c;
+        const failed = this._failedImages.has(m.Id);
         return {
             ...m,
             isOutbound: outbound,
             senderLabel: !outbound && m.Sender_Name__c ? m.Sender_Name__c : null,
+            showThumb: hasMedia && !failed,
+            showLink: hasMedia && failed,
             rowClass: 'slds-grid ' + (outbound ? 'slds-grid_align-end' : 'slds-grid_align-start'),
             bubbleClass:
                 'maxdoot-bubble ' + (outbound ? 'maxdoot-bubble-out' : 'maxdoot-bubble-in'),
@@ -89,6 +99,15 @@ export default class MaxdootConversation extends LightningElement {
                 ? new Date(ts).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit' })
                 : ''
         };
+    }
+
+    handleImgError(event) {
+        const id = event.target.dataset.id;
+        if (!id || this._failedImages.has(id)) return;
+        this._failedImages.add(id);
+        this.messages = this.messages.map((x) =>
+            x.Id === id ? { ...x, showThumb: false, showLink: true } : x
+        );
     }
 
     get hasConversation() {

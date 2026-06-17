@@ -11,7 +11,19 @@
                             <div class="maxdoot-sender slds-text-body_small slds-text-color_weak">{m.senderLabel}</div>
                         </template>
                         <template lwc:if={m.Media_URL__c}>
-                            <a href={m.Media_URL__c} target="_blank">📎 attachment</a>
+                            <template lwc:if={m.showThumb}>
+                                <a href={m.Media_URL__c} target="_blank" class="maxdoot-thumb-link">
+                                    <img
+                                        src={m.Media_URL__c}
+                                        class="maxdoot-thumb"
+                                        alt="attachment"
+                                        data-id={m.Id}
+                                        onerror={handleImgError} />
+                                </a>
+                            </template>
+                            <template lwc:if={m.showLink}>
+                                <a href={m.Media_URL__c} target="_blank">📎 attachment</a>
+                            </template>
                         </template>
                         <div class="maxdoot-body">{m.Body__c}</div>
                         <div class="maxdoot-meta slds-text-body_small">

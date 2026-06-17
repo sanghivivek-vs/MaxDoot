@@ -24,6 +24,21 @@
     margin-top: 0.125rem;
     text-align: right;
 }
+.maxdoot-thumb-link {
+    display: inline-block;
+    margin-bottom: 0.25rem;
+}
+.maxdoot-thumb {
+    display: block;
+    max-width: 220px;
+    max-height: 220px;
+    width: auto;
+    height: auto;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e5e5;
+    object-fit: cover;
+    cursor: pointer;
+}
 .maxdoot-composer {
     background: #ffffff;
 }
