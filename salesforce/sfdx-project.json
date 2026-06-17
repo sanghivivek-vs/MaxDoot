@@ -13,6 +13,6 @@
   ],
   "name": "MaxDoot",
   "namespace": "",
-  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sfdcLoginUrl": "https://orgfarm-f92991af7d-dev-ed.develop.my.salesforce.com",
   "sourceApiVersion": "61.0"
 }
