@@ -13,15 +13,48 @@
                 required>
             </lightning-combobox>
 
-            <lightning-input
-                class="slds-m-top_small"
-                type="tel"
-                label="Recipient WhatsApp number"
-                value={toNumber}
-                onchange={handleNumber}
-                placeholder="+10000000000"
-                required>
-            </lightning-input>
+            <!-- recipient picker: search only the records you own -->
+            <template lwc:if={showPicker}>
+                <lightning-input
+                    class="slds-m-top_small"
+                    type="search"
+                    label="To — your contacts &amp; leads"
+                    value={searchTerm}
+                    onchange={handleRecipientSearch}
+                    placeholder="Search your customers by name or number">
+                </lightning-input>
+                <template lwc:if={searching}>
+                    <lightning-spinner alternative-text="Searching" size="small"></lightning-spinner>
+                </template>
+                <template lwc:if={hasResults}>
+                    <ul class="maxdoot-picker">
+                        <template for:each={results} for:item="r">
+                            <li key={r.recordId} data-id={r.recordId}
+                                class="maxdoot-picker-item" onclick={handlePick}>
+                                <span class="maxdoot-picker-avatar">{r.initials}</span>
+                                <span class="maxdoot-picker-text">
+                                    <span class="maxdoot-picker-name">{r.name}</span>
+                                    <span class="maxdoot-picker-sub">{r.type} · {r.subtitle}</span>
+                                </span>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+            </template>
+
+            <!-- chosen recipient -->
+            <template lwc:if={showSelected}>
+                <div class="maxdoot-selected slds-m-top_small">
+                    <div class="maxdoot-selected-text">
+                        <strong>{recipientName}</strong>
+                        <div class="maxdoot-selected-sub">{toNumber}</div>
+                    </div>
+                    <template lwc:if={canChange}>
+                        <lightning-button label="Change" variant="base"
+                            onclick={handleChangeRecipient}></lightning-button>
+                    </template>
+                </div>
+            </template>
 
             <lightning-textarea
                 class="slds-m-top_small"

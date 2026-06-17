@@ -1,5 +1,17 @@
 <template>
     <template lwc:if={hasConversation}>
+        <template lwc:if={header}>
+            <div class="maxdoot-header">
+                <div class="maxdoot-avatar">{header.initials}</div>
+                <div class="maxdoot-header-text">
+                    <div class="maxdoot-header-name">{header.name}</div>
+                    <div class="maxdoot-header-sub">{header.sub}</div>
+                </div>
+                <template lwc:if={header.channel}>
+                    <span class="maxdoot-header-chip">{header.channel}</span>
+                </template>
+            </div>
+        </template>
         <div class="maxdoot-thread slds-p-around_small">
             <template lwc:if={loading}>
                 <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>

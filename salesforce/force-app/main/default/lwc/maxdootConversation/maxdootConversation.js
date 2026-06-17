@@ -6,6 +6,7 @@ import getMessages from '@salesforce/apex/MaxDootSendController.getMessages';
 import sendMessage from '@salesforce/apex/MaxDootSendController.sendMessage';
 import markRead from '@salesforce/apex/MaxDootSendController.markRead';
 import uploadAttachment from '@salesforce/apex/MaxDootSendController.uploadAttachment';
+import getConversationHeader from '@salesforce/apex/MaxDootSendController.getConversationHeader';
 
 const CHANNEL = '/event/MaxDoot_Inbound__e';
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — keeps the base64 payload within Apex request limits
@@ -48,6 +49,38 @@ export default class MaxdootConversation extends LightningElement {
             this.loading = true;
             markRead({ conversationId: value }).catch(() => {});
         }
+    }
+
+    @track header;
+    @wire(getConversationHeader, { conversationId: '$_conversationId' })
+    wiredHeader({ data }) {
+        if (data) {
+            const name = data.Is_Group__c
+                ? data.Group_Name__c || 'Group'
+                : (data.Contact__r && data.Contact__r.Name) ||
+                  (data.Lead__r && data.Lead__r.Name) ||
+                  data.Customer_Number__c ||
+                  'Unknown';
+            const sub = data.Is_Group__c
+                ? 'Group chat'
+                : data.Customer_Number__c || '';
+            this.header = {
+                name,
+                sub,
+                initials: this.initialsOf(name),
+                channel: data.Channel__r && data.Channel__r.Name
+            };
+        } else {
+            this.header = null;
+        }
+    }
+
+    initialsOf(name) {
+        if (!name) return '?';
+        const parts = String(name).trim().split(/\s+/);
+        let s = parts[0].charAt(0);
+        if (parts.length > 1) s += parts[parts.length - 1].charAt(0);
+        return s.toUpperCase();
     }
 
     @wire(getMessages, { conversationId: '$_conversationId' })

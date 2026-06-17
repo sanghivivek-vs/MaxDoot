@@ -34,26 +34,25 @@
         <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
     </template>
 
-    <ul class="slds-has-dividers_bottom-space">
+    <ul class="maxdoot-conv-list">
         <template for:each={filtered} for:item="c">
             <li key={c.Id}
                 class={c.cssClass}
                 data-id={c.Id}
                 onclick={handleClick}>
-                <div class="slds-grid slds-grid_align-spread slds-p-around_x-small">
-                    <div class="slds-truncate">
-                        <span class="slds-text-body_regular slds-text-color_default">
-                            <strong>{c.displayName}</strong>
-                        </span>
-                        <div class="slds-text-body_small slds-text-color_weak slds-truncate">
-                            {c.Last_Message_Preview__c}
+                <div class="maxdoot-conv-row">
+                    <div class="maxdoot-conv-avatar">{c.initials}</div>
+                    <div class="maxdoot-conv-main">
+                        <div class="maxdoot-conv-top">
+                            <span class="maxdoot-conv-name">{c.displayName}</span>
+                            <span class="maxdoot-conv-time">{c.relativeTime}</span>
                         </div>
-                    </div>
-                    <div class="slds-text-align_right">
-                        <template lwc:if={c.hasUnread}>
-                            <span class="slds-badge slds-theme_inverse">{c.Unread_Count__c}</span>
-                        </template>
-                        <div class="slds-text-body_small slds-text-color_weak">{c.relativeTime}</div>
+                        <div class="maxdoot-conv-bottom">
+                            <span class="maxdoot-conv-preview">{c.Last_Message_Preview__c}</span>
+                            <template lwc:if={c.hasUnread}>
+                                <span class="maxdoot-conv-badge">{c.Unread_Count__c}</span>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </li>

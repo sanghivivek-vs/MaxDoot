@@ -1,7 +1,52 @@
+.maxdoot-header {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.875rem;
+    background: #075e54;
+    color: #ffffff;
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+}
+.maxdoot-avatar {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: #25d366;
+    color: #073b32;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+.maxdoot-header-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.maxdoot-header-name {
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.maxdoot-header-sub {
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+.maxdoot-header-chip {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.18);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.75rem;
+}
 .maxdoot-thread {
     flex: 1 1 auto;
     overflow-y: auto;
-    background: #f7f9fb;
+    background: #ece5dd;
 }
 .maxdoot-bubble {
     max-width: 70%;

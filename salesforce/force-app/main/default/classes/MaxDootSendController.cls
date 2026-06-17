@@ -75,6 +75,80 @@ public with sharing class MaxDootSendController {
         return null;
     }
 
+    /** A pickable recipient (a record the running user owns) for the New Conversation flow. */
+    public class Recipient {
+        @AuraEnabled public String recordId;
+        @AuraEnabled public String name;
+        @AuraEnabled public String phone;
+        @AuraEnabled public String type;      // Contact | Lead
+        @AuraEnabled public String subtitle;  // phone / company, shown under the name
+        @AuraEnabled public String initials;
+    }
+
+    /**
+     * Search Contacts and Leads OWNED BY THE RUNNING USER for the New Conversation
+     * picker. Ownership is enforced here (OwnerId = me), so a counsellor can only start
+     * a conversation with their own customer — never someone else's.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Recipient> searchMyRecipients(String term) {
+        String t = String.isBlank(term) ? '' : String.escapeSingleQuotes(term.trim());
+        String likeExpr = '%' + t + '%';
+        Id me = UserInfo.getUserId();
+        List<Recipient> out = new List<Recipient>();
+
+        for (Contact c : [
+            SELECT Id, Name, Phone, MobilePhone FROM Contact
+            WHERE OwnerId = :me AND (Name LIKE :likeExpr OR Phone LIKE :likeExpr OR MobilePhone LIKE :likeExpr)
+            ORDER BY LastModifiedDate DESC LIMIT 15
+        ]) {
+            String ph = String.isNotBlank(c.MobilePhone) ? c.MobilePhone : c.Phone;
+            if (String.isBlank(ph)) continue;
+            out.add(buildRecipient(c.Id, c.Name, ph, 'Contact', ph));
+        }
+        for (Lead l : [
+            SELECT Id, Name, Company, Phone, MobilePhone FROM Lead
+            WHERE OwnerId = :me AND IsConverted = false
+              AND (Name LIKE :likeExpr OR Phone LIKE :likeExpr OR MobilePhone LIKE :likeExpr)
+            ORDER BY LastModifiedDate DESC LIMIT 15
+        ]) {
+            String ph = String.isNotBlank(l.MobilePhone) ? l.MobilePhone : l.Phone;
+            if (String.isBlank(ph)) continue;
+            out.add(buildRecipient(l.Id, l.Name, ph, 'Lead', l.Company));
+        }
+        return out;
+    }
+
+    private static Recipient buildRecipient(Id recId, String name, String phone, String type, String subtitle) {
+        Recipient r = new Recipient();
+        r.recordId = recId;
+        r.name = name;
+        r.phone = phone;
+        r.type = type;
+        r.subtitle = subtitle;
+        r.initials = initialsOf(name);
+        return r;
+    }
+
+    private static String initialsOf(String name) {
+        if (String.isBlank(name)) return '?';
+        List<String> parts = name.trim().split('\\s+');
+        String s = parts[0].substring(0, 1);
+        if (parts.size() > 1) s += parts[parts.size() - 1].substring(0, 1);
+        return s.toUpperCase();
+    }
+
+    /** Lightweight header for the chat pane: who the conversation is with. */
+    @AuraEnabled(cacheable=true)
+    public static Conversation__c getConversationHeader(Id conversationId) {
+        return [
+            SELECT Id, Customer_Number__c, Is_Group__c, Group_Name__c,
+                   Contact__c, Contact__r.Name, Lead__c, Lead__r.Name,
+                   Channel__r.Name, Owner.Name
+            FROM Conversation__c WHERE Id = :conversationId LIMIT 1
+        ];
+    }
+
     @AuraEnabled(cacheable=true)
     public static List<Message__c> getMessages(Id conversationId) {
         List<Message__c> msgs = [

@@ -1,0 +1,64 @@
+.maxdoot-picker {
+    list-style: none;
+    margin: 0.25rem 0 0;
+    padding: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+    border: 1px solid #e5e9ee;
+    border-radius: 0.375rem;
+}
+.maxdoot-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f3f6;
+}
+.maxdoot-picker-item:last-child {
+    border-bottom: none;
+}
+.maxdoot-picker-item:hover {
+    background: #f5f7f9;
+}
+.maxdoot-picker-avatar {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #d1f4dd;
+    color: #0b6b3a;
+    font-weight: 700;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.maxdoot-picker-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.maxdoot-picker-name {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+.maxdoot-picker-sub {
+    font-size: 0.78rem;
+    color: #6b7280;
+}
+
+.maxdoot-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: #eaf6ef;
+    border: 1px solid #cfe9d9;
+    border-radius: 0.375rem;
+}
+.maxdoot-selected-sub {
+    font-size: 0.8rem;
+    color: #4b5563;
+}

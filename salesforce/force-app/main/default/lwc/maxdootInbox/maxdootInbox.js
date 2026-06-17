@@ -66,12 +66,21 @@ export default class MaxdootInbox extends LightningElement {
         return {
             ...c,
             displayName: name,
+            initials: this.initialsOf(name),
             hasUnread: unread,
             relativeTime: this.formatTime(c.Last_Inbound__c),
             cssClass:
                 'slds-item maxdoot-conv-item' +
                 (c.Id === this.selectedId ? ' maxdoot-conv-selected' : '')
         };
+    }
+
+    initialsOf(name) {
+        if (!name) return '?';
+        const parts = String(name).trim().split(/\s+/);
+        let s = parts[0].charAt(0);
+        if (parts.length > 1) s += parts[parts.length - 1].charAt(0);
+        return s.toUpperCase();
     }
 
     formatTime(value) {
