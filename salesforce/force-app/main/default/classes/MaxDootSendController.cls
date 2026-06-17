@@ -38,6 +38,43 @@ public with sharing class MaxDootSendController {
         return rows;
     }
 
+    /**
+     * Resolve the WhatsApp conversation to show on a record page (Opportunity, Contact,
+     * Lead, ...). Prefers a direct Contact/Lead link; otherwise matches the record's
+     * phone number against an existing conversation. Returns null when none exists yet.
+     */
+    @AuraEnabled(cacheable=true)
+    public static Id getConversationIdForRecord(Id recordId, String objectApiName, String phoneNumber) {
+        if (objectApiName == 'Contact') {
+            for (Conversation__c c : [
+                SELECT Id FROM Conversation__c WHERE Contact__c = :recordId
+                ORDER BY Last_Inbound__c DESC NULLS LAST LIMIT 1
+            ]) {
+                return c.Id;
+            }
+        } else if (objectApiName == 'Lead') {
+            for (Conversation__c c : [
+                SELECT Id FROM Conversation__c WHERE Lead__c = :recordId
+                ORDER BY Last_Inbound__c DESC NULLS LAST LIMIT 1
+            ]) {
+                return c.Id;
+            }
+        }
+        // Fall back to a phone-number suffix match (works for Opportunity or any object).
+        String d = phoneNumber == null ? '' : phoneNumber.replaceAll('[^0-9]', '');
+        if (d.length() >= 8) {
+            String last = d.length() > 10 ? d.substring(d.length() - 10) : d;
+            String likeExpr = '%' + last;
+            for (Conversation__c c : [
+                SELECT Id FROM Conversation__c WHERE Customer_Number__c LIKE :likeExpr
+                ORDER BY Last_Inbound__c DESC NULLS LAST LIMIT 1
+            ]) {
+                return c.Id;
+            }
+        }
+        return null;
+    }
+
     @AuraEnabled(cacheable=true)
     public static List<Message__c> getMessages(Id conversationId) {
         List<Message__c> msgs = [

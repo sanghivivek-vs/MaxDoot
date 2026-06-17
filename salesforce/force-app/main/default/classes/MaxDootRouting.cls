@@ -7,6 +7,9 @@ public with sharing class MaxDootRouting {
     public class Match {
         public Id contactId;
         public Id leadId;
+        // Owner of the matched Contact/Lead, so inbound from a known number can be
+        // routed to the rep who owns that customer instead of the Unassigned pool.
+        public Id ownerId;
     }
 
     /**
@@ -25,37 +28,39 @@ public with sharing class MaxDootRouting {
 
         // Contacts first.
         for (Contact c : [
-            SELECT Id, Phone, MobilePhone
+            SELECT Id, OwnerId, Phone, MobilePhone
             FROM Contact
             WHERE Phone != null OR MobilePhone != null
             LIMIT 2000
         ]) {
-            assignIfMatch(result, normToRaw, digits(c.MobilePhone), c.Id, true);
-            assignIfMatch(result, normToRaw, digits(c.Phone), c.Id, true);
+            assignIfMatch(result, normToRaw, digits(c.MobilePhone), c.Id, c.OwnerId, true);
+            assignIfMatch(result, normToRaw, digits(c.Phone), c.Id, c.OwnerId, true);
         }
         // Leads for any still unmatched.
         for (Lead l : [
-            SELECT Id, Phone, MobilePhone, IsConverted
+            SELECT Id, OwnerId, Phone, MobilePhone, IsConverted
             FROM Lead
             WHERE IsConverted = false AND (Phone != null OR MobilePhone != null)
             LIMIT 2000
         ]) {
-            assignIfMatch(result, normToRaw, digits(l.MobilePhone), l.Id, false);
-            assignIfMatch(result, normToRaw, digits(l.Phone), l.Id, false);
+            assignIfMatch(result, normToRaw, digits(l.MobilePhone), l.Id, l.OwnerId, false);
+            assignIfMatch(result, normToRaw, digits(l.Phone), l.Id, l.OwnerId, false);
         }
         return result;
     }
 
     private static void assignIfMatch(Map<String, Match> result, Map<String, String> normToRaw,
-                                      String recDigits, Id recId, Boolean isContact) {
+                                      String recDigits, Id recId, Id ownerId, Boolean isContact) {
         if (String.isBlank(recDigits)) return;
         for (String norm : normToRaw.keySet()) {
             if (suffixEquals(norm, recDigits)) {
                 Match m = result.get(normToRaw.get(norm));
                 if (isContact && m.contactId == null) {
                     m.contactId = recId;
+                    m.ownerId = ownerId;
                 } else if (!isContact && m.leadId == null && m.contactId == null) {
                     m.leadId = recId;
+                    m.ownerId = ownerId;
                 }
             }
         }

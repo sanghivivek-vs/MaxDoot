@@ -1,0 +1,47 @@
+.maxdoot-record-chat {
+    min-height: 8rem;
+}
+
+.md-center {
+    position: relative;
+    min-height: 6rem;
+}
+
+/* Give the embedded thread a bounded, scrollable height so it sits cleanly in the
+   record-page side panel. */
+.md-thread {
+    height: 32rem;
+    max-height: 70vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.md-thread > c-maxdoot-conversation {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.md-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: #5c5c5c;
+}
+
+.md-empty-icon {
+    --slds-c-icon-color-foreground-default: #16a34a;
+}
+
+.md-empty-text {
+    font-weight: 600;
+}
+
+.md-empty-hint {
+    font-size: 0.8rem;
+    color: #8a8a8a;
+    max-width: 22rem;
+}

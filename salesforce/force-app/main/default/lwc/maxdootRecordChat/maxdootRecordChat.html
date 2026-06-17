@@ -1,0 +1,44 @@
+<template>
+    <lightning-card icon-name="standard:messaging_session">
+        <span slot="title">{cardTitle}</span>
+
+        <div class="maxdoot-record-chat">
+            <template lwc:if={loading}>
+                <div class="md-center">
+                    <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                </div>
+            </template>
+
+            <template lwc:if={hasConversation}>
+                <div class="md-thread">
+                    <c-maxdoot-conversation conversation-id={conversationId}></c-maxdoot-conversation>
+                </div>
+            </template>
+
+            <template lwc:if={showEmpty}>
+                <div class="md-empty">
+                    <lightning-icon
+                        icon-name="utility:chat"
+                        size="small"
+                        class="md-empty-icon"
+                    ></lightning-icon>
+                    <p class="md-empty-text">No WhatsApp conversation yet.</p>
+                    <template lwc:if={hasNumber}>
+                        <lightning-button
+                            label="Start WhatsApp"
+                            variant="brand"
+                            icon-name="utility:send"
+                            onclick={handleStart}
+                        ></lightning-button>
+                    </template>
+                    <template lwc:else>
+                        <p class="md-empty-hint">
+                            No phone number found on this record. Set the “Phone field API name”
+                            on this component in the Lightning App Builder.
+                        </p>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

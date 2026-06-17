@@ -93,7 +93,7 @@ public without sharing class MaxDootInboundHandler {
 
         Map<String, Conversation__c> convByKey = new Map<String, Conversation__c>();
         for (Conversation__c cv : [
-            SELECT Id, External_Key__c, Unread_Count__c, Status__c
+            SELECT Id, External_Key__c, Unread_Count__c, Status__c, Owner_Agent__c
             FROM Conversation__c WHERE External_Key__c IN :convKeys
         ]) {
             convByKey.put(cv.External_Key__c, cv);
@@ -122,15 +122,11 @@ public without sharing class MaxDootInboundHandler {
                 );
                 if (ch != null) {
                     cv.Channel__c = ch.Id;
-                    Id agent = MaxDootRouting.resolveOwner(ch);
-                    if (agent != null) {
-                        cv.OwnerId = agent;
-                        cv.Owner_Agent__c = agent;
-                    } else if (unassignedQueueId() != null) {
-                        // Cold inbound on a shared number lands in the claimable pool.
-                        cv.OwnerId = unassignedQueueId();
-                    }
                 }
+                // Owner precedence: the rep who owns the matched customer record (so a
+                // reply from a known number routes to that rep, not the shared Unassigned
+                // pool), then the channel's assigned agent, then the Unassigned queue.
+                Id owner = null;
                 if (String.isNotBlank(e.Group_Id__c)) {
                     cv.Is_Group__c = true;
                     cv.Group_Name__c = e.Group_Name__c;
@@ -140,10 +136,33 @@ public without sharing class MaxDootInboundHandler {
                     if (mt != null) {
                         cv.Contact__c = mt.contactId;
                         cv.Lead__c = mt.leadId;
+                        owner = userOwner(mt.ownerId);
                     }
                 }
-            } else if (String.isNotBlank(e.Group_Id__c) && String.isNotBlank(e.Group_Name__c)) {
-                cv.Group_Name__c = e.Group_Name__c; // keep group name fresh
+                if (owner == null && ch != null) {
+                    owner = MaxDootRouting.resolveOwner(ch);
+                }
+                if (owner != null) {
+                    cv.OwnerId = owner;
+                    cv.Owner_Agent__c = owner;
+                } else if (unassignedQueueId() != null) {
+                    // Cold inbound from an unknown number lands in the claimable pool.
+                    cv.OwnerId = unassignedQueueId();
+                }
+            } else {
+                if (String.isNotBlank(e.Group_Id__c) && String.isNotBlank(e.Group_Name__c)) {
+                    cv.Group_Name__c = e.Group_Name__c; // keep group name fresh
+                }
+                // An existing thread still sitting Unassigned: if we can now match the
+                // number to a rep, route it to them so it stops lingering in the pool.
+                if (cv.Owner_Agent__c == null && String.isBlank(e.Group_Id__c)) {
+                    MaxDootRouting.Match mt = matches.get(e.From_Number__c);
+                    Id owner = (mt == null) ? null : userOwner(mt.ownerId);
+                    if (owner != null) {
+                        cv.OwnerId = owner;
+                        cv.Owner_Agent__c = owner;
+                    }
+                }
             }
             cv.Last_Inbound__c = System.now();
             cv.Window_Expires__c = System.now().addHours(24);
@@ -184,6 +203,11 @@ public without sharing class MaxDootInboundHandler {
     }
 
     // ---- helpers ----------------------------------------------------------------
+
+    /** Returns the id only when it is a User (key prefix 005), never a queue/group. */
+    private static Id userOwner(Id ownerId) {
+        return (ownerId != null && String.valueOf(ownerId).startsWith('005')) ? ownerId : null;
+    }
 
     private static Integer countFor(List<MaxDoot_Inbound__e> events, String key) {
         Integer n = 0;
